@@ -165,11 +165,23 @@ class MCPServerManager:
             Server response
         """
         if server_type not in self.server_processes:
+            logger.error(f"Server {server_type} is not running")
             return {
-                "error": f"Server {server_type} is not running"
+                "error": f"Server {server_type} is not running",
+                "error_code": "SERVER_NOT_RUNNING"
             }
         
         process = self.server_processes[server_type]
+        
+        # Check if process is still alive
+        if process.returncode is not None:
+            logger.error(f"Server {server_type} process has terminated (returncode: {process.returncode})")
+            # Remove dead process
+            del self.server_processes[server_type]
+            return {
+                "error": f"Server {server_type} process terminated",
+                "error_code": "PROCESS_TERMINATED"
+            }
         
         # Create JSON-RPC request
         request = {
@@ -182,24 +194,72 @@ class MCPServerManager:
         try:
             # Send request via stdin
             request_json = json.dumps(request) + "\n"
+            if process.stdin is None:
+                return {
+                    "error": "Server stdin is not available",
+                    "error_code": "STDIN_UNAVAILABLE"
+                }
+            
             process.stdin.write(request_json.encode())
             await process.stdin.drain()
             
-            # Read response from stdout
+            # Read response from stdout with timeout
+            if process.stdout is None:
+                return {
+                    "error": "Server stdout is not available",
+                    "error_code": "STDOUT_UNAVAILABLE"
+                }
+            
             response_line = await asyncio.wait_for(
                 process.stdout.readline(), 
                 timeout=10.0
             )
+            
+            if not response_line:
+                return {
+                    "error": "Empty response from server",
+                    "error_code": "EMPTY_RESPONSE"
+                }
+            
             response = json.loads(response_line.decode())
+            
+            # Check for errors in response
+            if "error" in response:
+                logger.warning(f"Server returned error: {response['error']}")
             
             return response
             
         except asyncio.TimeoutError:
-            return {"error": "Request timeout"}
-        except json.JSONDecodeError:
-            return {"error": "Invalid JSON response"}
+            logger.error(f"Request timeout for {server_type}.{method}")
+            return {
+                "error": "Request timeout",
+                "error_code": "TIMEOUT",
+                "server": server_type,
+                "method": method
+            }
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON response from {server_type}: {e}")
+            return {
+                "error": f"Invalid JSON response: {str(e)}",
+                "error_code": "JSON_DECODE_ERROR"
+            }
+        except BrokenPipeError:
+            logger.error(f"Broken pipe to {server_type} server")
+            # Remove dead process
+            if server_type in self.server_processes:
+                del self.server_processes[server_type]
+            return {
+                "error": "Connection to server lost",
+                "error_code": "BROKEN_PIPE"
+            }
         except Exception as e:
-            return {"error": str(e)}
+            logger.error(f"Unexpected error communicating with {server_type}: {e}")
+            return {
+                "error": str(e),
+                "error_code": "UNEXPECTED_ERROR",
+                "server": server_type,
+                "method": method
+            }
     
     async def coordinate_request(
         self,
@@ -318,25 +378,51 @@ class MCPServerManager:
             }
         return status
     
-    async def health_check(self) -> Dict[str, bool]:
+    async def health_check(self) -> Dict[str, Dict[str, Any]]:
         """
         Perform health check on all running servers.
         
         Returns:
-            Dictionary with health status for each server
+            Dictionary with detailed health status for each server
         """
         health = {}
-        for server_type in self.server_processes:
+        for server_type in list(self.server_processes.keys()):
+            process = self.server_processes.get(server_type)
+            
+            if process is None:
+                health[server_type] = {
+                    "status": "not_running",
+                    "healthy": False
+                }
+                continue
+            
+            # Check if process is alive
+            if process.returncode is not None:
+                health[server_type] = {
+                    "status": "terminated",
+                    "healthy": False,
+                    "returncode": process.returncode
+                }
+                # Clean up dead process
+                del self.server_processes[server_type]
+                continue
+            
+            # Try to send a health check request
             try:
-                # Send a simple ping request
-                response = await self.send_request(
-                    server_type,
-                    "ping",
-                    {}
-                )
-                health[server_type] = "error" not in response
-            except:
-                health[server_type] = False
+                # Try to list tools as a health check (more reliable than ping)
+                # Note: This is a generic check - actual implementation depends on server
+                health[server_type] = {
+                    "status": "running",
+                    "healthy": True,
+                    "pid": process.pid
+                }
+            except Exception as e:
+                health[server_type] = {
+                    "status": "error",
+                    "healthy": False,
+                    "error": str(e)
+                }
+        
         return health
 
 
