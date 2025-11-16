@@ -571,3 +571,35 @@ class Analytics:
             'timeline': timeline,
             'categories': categories
         }
+# Add to ui/components.py or create new file ui/map_component.py
+
+import folium
+from streamlit_folium import st_folium
+import streamlit as st
+
+def display_map(latitude: float, longitude: float, location_name: str = ""):
+    """
+    Display an interactive map using Folium and OpenStreetMap.
+    
+    Args:
+        latitude: Latitude coordinate
+        longitude: Longitude coordinate
+        location_name: Name of the location
+    """
+    # Create map centered on location
+    m = folium.Map(
+        location=[latitude, longitude],
+        zoom_start=13,
+        tiles='OpenStreetMap'  # Free OpenStreetMap tiles
+    )
+    
+    # Add marker
+    folium.Marker(
+        [latitude, longitude],
+        popup=location_name or f"{latitude}, {longitude}",
+        tooltip=location_name,
+        icon=folium.Icon(color='blue', icon='info-sign')
+    ).add_to(m)
+    
+    # Display in Streamlit
+    st_folium(m, width=700, height=500, returned_objects=[])

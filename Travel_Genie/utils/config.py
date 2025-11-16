@@ -65,7 +65,7 @@ class AppConfig:
     show_analytics: bool = True
     
     # Model Configuration
-    claude_model: str = "claude-3-opus-20240229"
+    claude_model: str = "claude-sonnet-4-20250514"
     claude_temperature: float = 0.7
     claude_max_tokens: int = 4096
     
@@ -80,6 +80,37 @@ class AppConfig:
         self.yolo_device = os.getenv("YOLO_DEVICE", self.yolo_device)
 
 
+# @dataclass
+# class ServerConfig:
+#     """MCP Server configuration settings."""
+#     servers: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+#     stdio_buffer_size: int = 65536
+#     process_timeout: int = 30
+#     auto_restart: bool = True
+#     health_check_interval: int = 60
+    
+#     def __post_init__(self):
+#         """Initialize server configurations."""
+#         self.servers = {
+#             "itinerary": {
+#                 "name": "travel-itinerary",
+#                 "path": "mcp_servers/itinerary_server.py",
+#                 "enabled": True,
+#                 "auto_start": True
+#             },
+#             "maps": {
+#                 "name": "travel-maps",
+#                 "path": "mcp_servers/maps_server.py",
+#                 "enabled": True,
+#                 "auto_start": True
+#             },
+#             "booking": {
+#                 "name": "travel-booking",
+#                 "path": "mcp_servers/booking_server.py",
+#                 "enabled": True,
+#                 "auto_start": True
+#             }
+#         }
 @dataclass
 class ServerConfig:
     """MCP Server configuration settings."""
@@ -88,6 +119,10 @@ class ServerConfig:
     process_timeout: int = 30
     auto_restart: bool = True
     health_check_interval: int = 60
+    # Add transport and port configuration
+    transport: str = "stdio"  # "stdio" or "sse" (Server-Sent Events)
+    default_host: str = "localhost"
+    default_port_start: int = 8000  # Starting port number
     
     def __post_init__(self):
         """Initialize server configurations."""
@@ -96,22 +131,30 @@ class ServerConfig:
                 "name": "travel-itinerary",
                 "path": "mcp_servers/itinerary_server.py",
                 "enabled": True,
-                "auto_start": True
+                "auto_start": True,
+                "host": os.getenv("MCP_ITINERARY_HOST", self.default_host),
+                "port": int(os.getenv("MCP_ITINERARY_PORT", self.default_port_start)),
+                "transport": os.getenv("MCP_ITINERARY_TRANSPORT", self.transport)
             },
             "maps": {
                 "name": "travel-maps",
                 "path": "mcp_servers/maps_server.py",
                 "enabled": True,
-                "auto_start": True
+                "auto_start": True,
+                "host": os.getenv("MCP_MAPS_HOST", self.default_host),
+                "port": int(os.getenv("MCP_MAPS_PORT", self.default_port_start + 1)),
+                "transport": os.getenv("MCP_MAPS_TRANSPORT", self.transport)
             },
             "booking": {
                 "name": "travel-booking",
                 "path": "mcp_servers/booking_server.py",
                 "enabled": True,
-                "auto_start": True
+                "auto_start": True,
+                "host": os.getenv("MCP_BOOKING_HOST", self.default_host),
+                "port": int(os.getenv("MCP_BOOKING_PORT", self.default_port_start + 2)),
+                "transport": os.getenv("MCP_BOOKING_TRANSPORT", self.transport)
             }
         }
-
 
 class ConfigManager:
     """

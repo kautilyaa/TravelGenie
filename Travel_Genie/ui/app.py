@@ -17,6 +17,45 @@ import sys
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
+
+def run_async(coro):
+    """
+    Run an async coroutine in Streamlit's context.
+    Handles event loop conflicts by using nest_asyncio to allow nested event loops.
+    
+    Args:
+        coro: Coroutine to run
+        
+    Returns:
+        Result of the coroutine
+    """
+    try:
+        # Check if there's already a running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # There's a running loop, use nest_asyncio to allow nested loops
+            import nest_asyncio
+            nest_asyncio.apply()
+            return asyncio.run(coro)
+        except RuntimeError:
+            # No running loop, safe to use asyncio.run directly
+            return asyncio.run(coro)
+    except ImportError:
+        # nest_asyncio not available, use thread-based fallback
+        import concurrent.futures
+        
+        def run_in_thread():
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return new_loop.run_until_complete(coro)
+            finally:
+                new_loop.close()
+        
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_in_thread)
+            return future.result()
+
 # Import custom modules
 from agents.claude_agent import ClaudeAgent
 from agents.video_analyzer import YOLO11Analyzer
@@ -218,11 +257,11 @@ class TravelGenieApp:
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("▶️ Start All", use_container_width=True):
-                    asyncio.run(self.start_mcp_servers())
+                    run_async(self.start_mcp_servers())
             
             with col2:
                 if st.button("⏹️ Stop All", use_container_width=True):
-                    asyncio.run(self.stop_mcp_servers())
+                    run_async(self.stop_mcp_servers())
             
             # Server status
             if st.session_state.mcp_orchestrator:
@@ -269,7 +308,7 @@ class TravelGenieApp:
             # Get response
             if st.session_state.claude_agent:
                 with st.spinner("Travel Genie is thinking..."):
-                    response = asyncio.run(chat_ui.get_response(
+                    response = run_async(chat_ui.get_response(
                         user_input, 
                         st.session_state.session_id
                     ))
@@ -284,7 +323,7 @@ class TravelGenieApp:
                     st.rerun()
             else:
                 st.error("Chat service is not available. Please check your API key.")
-    
+                
     def render_video_tab(self):
         """Render video analysis tab."""
         st.header("📹 YouTube Travel Video Analysis")
@@ -303,6 +342,24 @@ class TravelGenieApp:
         with col2:
             analyze_btn = st.button("🔍 Analyze", use_container_width=True)
         
+        # Display YouTube video in webview if URL is provided
+        if video_url:
+            video_id = YouTubeHelper.extract_video_id(video_url)
+            if video_id:
+                # Embed YouTube video using iframe
+                embed_url = f"https://www.youtube.com/embed/{video_id}"
+                st.markdown(f"""
+                <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%;">
+                    <iframe 
+                        src="{embed_url}" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                    </iframe>
+                </div>
+                """, unsafe_allow_html=True)
+        
         # Analysis settings
         with st.expander("⚙️ Analysis Settings"):
             duration = st.slider("Analysis Duration (seconds)", 10, 120, 30)
@@ -311,61 +368,159 @@ class TravelGenieApp:
         
         # Analyze video
         if analyze_btn and video_url:
-            # Validate URL
-            video_url = sanitizer.sanitize_url(video_url)
+                # Validate URL
+                video_url = sanitizer.sanitize_url(video_url)
+                
+                if video_url and YouTubeHelper.validate_url(video_url):
+                    with st.spinner("Analyzing video... This may take a moment."):
+                        result = run_async(video_panel.analyze_video(
+                            video_url,
+                            duration,
+                            skip_frames,
+                            show_live
+                        ))
+                        
+                        if result:
+                            # Safely check summary structure
+                            summary = getattr(result, 'summary', {}) or {}
+                            
+                            # Check if analysis was successful
+                            if not summary or 'error' in summary:
+                                error_msg = summary.get('error', 'Unknown error occurred during video analysis')
+                                st.error(f"❌ Analysis failed: {error_msg}")
+                            else:
+                                st.session_state.video_results.append(result)
+                                
+                                # Display results
+                                st.success("✅ Analysis Complete!")
+                                
+                                # Summary metrics - use .get() with defaults for safety
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                    st.metric("Total Detections", summary.get('total_detections', 0))
+                                
+                                with col2:
+                                    st.metric("Unique Objects", summary.get('unique_objects', 0))
+                                
+                                with col3:
+                                    st.metric("Travel Context", summary.get('travel_context', 'unknown'))
+                                
+                                # Top objects chart
+                                top_objects = summary.get('top_objects', [])
+                                if top_objects:
+                                    try:
+                                        df = pd.DataFrame(top_objects[:5])
+                                        fig = px.bar(df, x='name', y='count', 
+                                                title="Top Detected Objects",
+                                                color='avg_confidence',
+                                                color_continuous_scale='viridis')
+                                        st.plotly_chart(fig, use_container_width=True)
+                                    except Exception as e:
+                                        st.warning(f"Could not display chart: {e}")
+                                
+                                # Travel indicators
+                                indicators = summary.get('travel_indicators', {})
+                                if indicators:
+                                    st.subheader("🎯 Travel Indicators")
+                                    cols = st.columns(4)
+                                    icons = ['🧳', '🚗', '👥', '🏞️']
+                                    labels = ['Has Luggage', 'Has Transportation', 'Has People', 'Outdoor Scene']
+                                    indicator_keys = list(indicators.keys())[:4]  # Take first 4 keys
+                                    
+                                    for col, icon, label, key in zip(cols, icons, labels, indicator_keys):
+                                        with col:
+                                            if indicators.get(key, False):
+                                                st.success(f"{icon} {label}")
+                                            else:
+                                                st.info(f"{icon} {label}")
+                        elif result is None:
+                            st.error("❌ Video analysis returned no results. Please check the video URL and try again.")
+                else:
+                    st.error("Invalid YouTube URL. Please check and try again.")
+
+    
+    # def render_video_tab(self):
+    #     """Render video analysis tab."""
+    #     st.header("📹 YouTube Travel Video Analysis")
+        
+    #     video_panel = VideoAnalysisPanel(st.session_state.yolo_analyzer)
+        
+    #     # Video URL input
+    #     col1, col2 = st.columns([3, 1])
+        
+    #     with col1:
+    #         video_url = st.text_input(
+    #             "Enter YouTube URL",
+    #             placeholder="https://www.youtube.com/watch?v=..."
+    #         )
+        
+    #     with col2:
+    #         analyze_btn = st.button("🔍 Analyze", use_container_width=True)
+        
+    #     # Analysis settings
+    #     with st.expander("⚙️ Analysis Settings"):
+    #         duration = st.slider("Analysis Duration (seconds)", 10, 120, 30)
+    #         skip_frames = st.slider("Skip Frames (for speed)", 1, 10, 5)
+    #         show_live = st.checkbox("Show Live Detection", value=True)
+        
+    #     # Analyze video
+    #     if analyze_btn and video_url:
+    #         # Validate URL
+    #         video_url = sanitizer.sanitize_url(video_url)
             
-            if video_url and YouTubeHelper.validate_url(video_url):
-                with st.spinner("Analyzing video... This may take a moment."):
-                    result = asyncio.run(video_panel.analyze_video(
-                        video_url,
-                        duration,
-                        skip_frames,
-                        show_live
-                    ))
+    #         if video_url and YouTubeHelper.validate_url(video_url):
+    #             with st.spinner("Analyzing video... This may take a moment."):
+    #                 result = asyncio.run(video_panel.analyze_video(
+    #                     video_url,
+    #                     duration,
+    #                     skip_frames,
+    #                     show_live
+    #                 ))
                     
-                    if result:
-                        st.session_state.video_results.append(result)
+    #                 if result:
+    #                     st.session_state.video_results.append(result)
                         
-                        # Display results
-                        st.success("✅ Analysis Complete!")
+    #                     # Display results
+    #                     st.success("✅ Analysis Complete!")
                         
-                        # Summary metrics
-                        col1, col2, col3 = st.columns(3)
+    #                     # Summary metrics
+    #                     col1, col2, col3 = st.columns(3)
                         
-                        with col1:
-                            st.metric("Total Detections", result.summary['total_detections'])
+    #                     with col1:
+    #                         st.metric("Total Detections", result.summary['total_detections'])
                         
-                        with col2:
-                            st.metric("Unique Objects", result.summary['unique_objects'])
+    #                     with col2:
+    #                         st.metric("Unique Objects", result.summary['unique_objects'])
                         
-                        with col3:
-                            st.metric("Travel Context", result.summary['travel_context'])
+    #                     with col3:
+    #                         st.metric("Travel Context", result.summary['travel_context'])
                         
-                        # Top objects chart
-                        if result.summary['top_objects']:
-                            df = pd.DataFrame(result.summary['top_objects'][:5])
-                            fig = px.bar(df, x='name', y='count', 
-                                       title="Top Detected Objects",
-                                       color='avg_confidence',
-                                       color_continuous_scale='viridis')
-                            st.plotly_chart(fig, use_container_width=True)
+    #                     # Top objects chart
+    #                     if result.summary['top_objects']:
+    #                         df = pd.DataFrame(result.summary['top_objects'][:5])
+    #                         fig = px.bar(df, x='name', y='count', 
+    #                                    title="Top Detected Objects",
+    #                                    color='avg_confidence',
+    #                                    color_continuous_scale='viridis')
+    #                         st.plotly_chart(fig, use_container_width=True)
                         
-                        # Travel indicators
-                        st.subheader("🎯 Travel Indicators")
-                        indicators = result.summary['travel_indicators']
+    #                     # Travel indicators
+    #                     st.subheader("🎯 Travel Indicators")
+    #                     indicators = result.summary['travel_indicators']
                         
-                        cols = st.columns(4)
-                        icons = ['🧳', '🚗', '👥', '🏞️']
-                        labels = ['Has Luggage', 'Has Transportation', 'Has People', 'Outdoor Scene']
+    #                     cols = st.columns(4)
+    #                     icons = ['🧳', '🚗', '👥', '🏞️']
+    #                     labels = ['Has Luggage', 'Has Transportation', 'Has People', 'Outdoor Scene']
                         
-                        for col, icon, label, key in zip(cols, icons, labels, indicators.keys()):
-                            with col:
-                                if indicators[key]:
-                                    st.success(f"{icon} {label}")
-                                else:
-                                    st.info(f"{icon} {label}")
-            else:
-                st.error("Invalid YouTube URL. Please check and try again.")
+    #                     for col, icon, label, key in zip(cols, icons, labels, indicators.keys()):
+    #                         with col:
+    #                             if indicators[key]:
+    #                                 st.success(f"{icon} {label}")
+    #                             else:
+    #                                 st.info(f"{icon} {label}")
+    #         else:
+    #             st.error("Invalid YouTube URL. Please check and try again.")
     
     def render_itinerary_tab(self):
         """Render itinerary builder tab."""
@@ -404,7 +559,7 @@ class TravelGenieApp:
             
             if st.button("📝 Create Itinerary", use_container_width=True):
                 if destination and start_date and end_date:
-                    result = asyncio.run(itinerary_ui.create_itinerary(
+                    result = run_async(itinerary_ui.create_itinerary(
                         destination,
                         str(start_date),
                         str(end_date),
@@ -494,7 +649,7 @@ class TravelGenieApp:
             
             if st.button("🔍 Search Flights", use_container_width=True):
                 with st.spinner("Searching flights..."):
-                    results = asyncio.run(booking_ui.search_flights(
+                    results = run_async(booking_ui.search_flights(
                         origin, destination, str(departure_date),
                         str(return_date) if return_date else None,
                         passengers, class_type.lower()
@@ -544,7 +699,7 @@ class TravelGenieApp:
             
             if st.button("🔍 Search Hotels", use_container_width=True):
                 with st.spinner("Searching hotels..."):
-                    results = asyncio.run(booking_ui.search_hotels(
+                    results = run_async(booking_ui.search_hotels(
                         location, str(check_in), str(check_out),
                         guests, rooms, amenities
                     ))
@@ -701,7 +856,13 @@ class TravelGenieApp:
         with col1:
             claude_model = st.selectbox(
                 "Claude Model",
-                ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
+                [
+                    "claude-sonnet-4-20250514",
+                    "claude-opus-4-1-20250805",
+                    "claude-3-5-sonnet-20241022",
+                    "claude-3-sonnet-20240229",
+                    "claude-3-haiku-20240307"
+                ],
                 index=0
             )
             

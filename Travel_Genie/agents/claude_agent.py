@@ -72,7 +72,7 @@ class ClaudeAgent:
     def __init__(
         self, 
         api_key: Optional[str] = None,
-        model: str = "claude-3-opus-20240229",
+        model: str = "claude-sonnet-4-20250514",
         temperature: float = 0.7,
         max_tokens: int = 4096
     ):

@@ -1,15 +1,19 @@
 """
-Maps MCP Server - Handles location services and geographical data
-Uses FastMCP with stdio transport for efficient process management
+Maps MCP Server - Handles location services using OpenStreetMap (free)
+Uses Nominatim for geocoding and OpenStreetMap for maps
 """
 
 import json
 import math
+import requests
 from typing import Dict, List, Optional, Tuple, Any
 from fastmcp import FastMCP
 
 # Initialize FastMCP server for maps and location services
 mcp = FastMCP("travel-maps")
+
+# OpenStreetMap Nominatim API (free, no key required)
+NOMINATIM_API = "https://nominatim.openstreetmap.org"
 
 
 @mcp.tool()
@@ -18,7 +22,7 @@ async def get_location_info(
     include_nearby: bool = False
 ) -> Dict[str, Any]:
     """
-    Get detailed information about a location.
+    Get detailed information about a location using OpenStreetMap Nominatim.
     
     Args:
         location: Name or address of the location
@@ -27,69 +31,96 @@ async def get_location_info(
     Returns:
         Location information including coordinates and details
     """
-    # Mock location data - in production, would use real geocoding API
-    mock_locations = {
-        "Paris, France": {
-            "latitude": 48.8566,
-            "longitude": 2.3522,
-            "country": "France",
-            "region": "Île-de-France",
-            "timezone": "Europe/Paris",
-            "population": "2.2 million"
-        },
-        "Tokyo, Japan": {
-            "latitude": 35.6762,
-            "longitude": 139.6503,
-            "country": "Japan",
-            "region": "Kantō",
-            "timezone": "Asia/Tokyo",
-            "population": "14 million"
-        },
-        "New York, USA": {
-            "latitude": 40.7128,
-            "longitude": -74.0060,
-            "country": "United States",
-            "region": "New York",
-            "timezone": "America/New_York",
-            "population": "8.3 million"
+    try:
+        # Use Nominatim API for geocoding (free, no API key needed)
+        params = {
+            "q": location,
+            "format": "json",
+            "limit": 1,
+            "addressdetails": 1
         }
-    }
-    
-    # Find closest match
-    location_key = None
-    for key in mock_locations:
-        if location.lower() in key.lower():
-            location_key = key
-            break
-    
-    if not location_key:
-        # Default location data
-        location_data = {
-            "latitude": 0.0,
-            "longitude": 0.0,
-            "country": "Unknown",
-            "region": "Unknown",
-            "timezone": "UTC",
-            "population": "Unknown"
+        
+        headers = {
+            "User-Agent": "TravelGenie/1.0"  # Required by Nominatim
         }
-    else:
-        location_data = mock_locations[location_key]
-    
-    result = {
-        "success": True,
-        "location": location,
-        "details": location_data
-    }
-    
-    if include_nearby:
-        result["nearby_attractions"] = [
-            "Historical monument - 0.5 km",
-            "Museum - 1.2 km",
-            "Park - 0.8 km",
-            "Shopping district - 2.0 km"
-        ]
-    
-    return result
+        
+        response = requests.get(f"{NOMINATIM_API}/search", params=params, headers=headers)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        if not data:
+            return {
+                "success": False,
+                "error": "Location not found",
+                "location": location
+            }
+        
+        result_data = data[0]
+        
+        location_info = {
+            "latitude": float(result_data["lat"]),
+            "longitude": float(result_data["lon"]),
+            "display_name": result_data.get("display_name", location),
+            "address": result_data.get("address", {}),
+            "country": result_data.get("address", {}).get("country", "Unknown"),
+            "region": result_data.get("address", {}).get("state", "Unknown"),
+        }
+        
+        result = {
+            "success": True,
+            "location": location,
+            "details": location_info,
+            "osm_id": result_data.get("osm_id"),
+            "osm_type": result_data.get("osm_type")
+        }
+        
+        if include_nearby:
+            # Get nearby places using Overpass API (free)
+            nearby = await _get_nearby_places(
+                location_info["latitude"],
+                location_info["longitude"]
+            )
+            result["nearby_attractions"] = nearby
+        
+        return result
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "location": location
+        }
+
+
+async def _get_nearby_places(lat: float, lon: float, radius: float = 1000) -> List[Dict]:
+    """Get nearby places using Overpass API."""
+    try:
+        overpass_url = "https://overpass-api.de/api/interpreter"
+        query = f"""
+        [out:json][timeout:25];
+        (
+          node["tourism"~"attraction|museum|monument"](around:{radius},{lat},{lon});
+          node["amenity"~"restaurant|cafe"](around:{radius},{lat},{lon});
+        );
+        out body;
+        """
+        
+        response = requests.post(overpass_url, data={"data": query})
+        response.raise_for_status()
+        data = response.json()
+        
+        places = []
+        for element in data.get("elements", [])[:10]:
+            places.append({
+                "name": element.get("tags", {}).get("name", "Unknown"),
+                "type": element.get("tags", {}).get("tourism") or element.get("tags", {}).get("amenity"),
+                "distance": "~500m"  # Approximate
+            })
+        
+        return places
+    except:
+        return []
 
 
 @mcp.tool()
@@ -99,70 +130,57 @@ async def calculate_distance(
     unit: str = "km"
 ) -> Dict[str, Any]:
     """
-    Calculate distance between two locations.
-    
-    Args:
-        origin: Starting location
-        destination: End location
-        unit: Unit of measurement ('km' or 'miles')
-    
-    Returns:
-        Distance information between locations
+    Calculate distance between two locations using Haversine formula.
+    Uses OpenStreetMap for geocoding.
     """
-    # Mock calculation using Haversine formula
-    # In production, would use real geocoding and routing APIs
-    
-    # Sample coordinates (would be fetched from geocoding API)
-    coords = {
-        "paris": (48.8566, 2.3522),
-        "london": (51.5074, -0.1278),
-        "rome": (41.9028, 12.4964),
-        "berlin": (52.5200, 13.4050)
-    }
-    
-    def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        """Calculate the great circle distance between two points."""
-        R = 6371  # Earth's radius in kilometers
+    try:
+        # Get coordinates for both locations
+        origin_info = await get_location_info(origin)
+        dest_info = await get_location_info(destination)
         
+        if not origin_info.get("success") or not dest_info.get("success"):
+            return {
+                "success": False,
+                "error": "Could not geocode one or both locations"
+            }
+        
+        lat1 = origin_info["details"]["latitude"]
+        lon1 = origin_info["details"]["longitude"]
+        lat2 = dest_info["details"]["latitude"]
+        lon2 = dest_info["details"]["longitude"]
+        
+        # Haversine formula
+        R = 6371  # Earth's radius in kilometers
         lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
         dlat = lat2 - lat1
         dlon = lon2 - lon1
-        
         a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
         c = 2 * math.asin(math.sqrt(a))
+        distance_km = R * c
         
-        return R * c
-    
-    # Find coordinates for origin and destination
-    origin_key = origin.lower().split(',')[0].strip()
-    dest_key = destination.lower().split(',')[0].strip()
-    
-    if origin_key in coords and dest_key in coords:
-        lat1, lon1 = coords[origin_key]
-        lat2, lon2 = coords[dest_key]
-        distance_km = haversine(lat1, lon1, lat2, lon2)
-    else:
-        # Default distance for unknown locations
-        distance_km = 500  # Mock value
-    
-    distance_miles = distance_km * 0.621371
-    
-    return {
-        "success": True,
-        "origin": origin,
-        "destination": destination,
-        "distance": {
-            "kilometers": round(distance_km, 2),
-            "miles": round(distance_miles, 2)
-        },
-        "estimated_travel_time": {
-            "driving": f"{round(distance_km / 80, 1)} hours",
-            "train": f"{round(distance_km / 150, 1)} hours",
-            "flight": f"{round(distance_km / 800 + 2, 1)} hours"  # +2 for airport time
-        },
-        "unit": unit,
-        "value": round(distance_km if unit == "km" else distance_miles, 2)
-    }
+        distance_miles = distance_km * 0.621371
+        
+        return {
+            "success": True,
+            "origin": origin,
+            "destination": destination,
+            "distance": {
+                "kilometers": round(distance_km, 2),
+                "miles": round(distance_miles, 2)
+            },
+            "estimated_travel_time": {
+                "driving": f"{round(distance_km / 80, 1)} hours",
+                "train": f"{round(distance_km / 150, 1)} hours",
+                "flight": f"{round(distance_km / 800 + 2, 1)} hours"
+            },
+            "unit": unit,
+            "value": round(distance_km if unit == "km" else distance_miles, 2)
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 
 @mcp.tool()
@@ -173,143 +191,64 @@ async def get_route(
     mode: str = "driving"
 ) -> Dict[str, Any]:
     """
-    Get route information between locations.
-    
-    Args:
-        origin: Starting point
-        destination: End point
-        waypoints: Optional intermediate stops
-        mode: Transportation mode ('driving', 'walking', 'transit', 'cycling')
-    
-    Returns:
-        Route information with directions
+    Get route information using OpenRouteService (free tier available).
+    Falls back to simple calculation if API unavailable.
     """
-    # Mock route data - in production, would use real routing API
-    route_info = {
-        "origin": origin,
-        "destination": destination,
-        "mode": mode,
-        "waypoints": waypoints or [],
-        "total_distance": "342 km",
-        "total_duration": "4h 15min",
-        "steps": [
-            {
-                "instruction": f"Start from {origin}",
-                "distance": "0 km",
-                "duration": "0 min"
-            },
-            {
-                "instruction": "Take highway A1 North",
-                "distance": "150 km",
-                "duration": "1h 45min"
+    try:
+        # Get coordinates
+        origin_info = await get_location_info(origin)
+        dest_info = await get_location_info(destination)
+        
+        if not origin_info.get("success") or not dest_info.get("success"):
+            return {"success": False, "error": "Could not geocode locations"}
+        
+        # Use OpenRouteService API (free tier: 2000 requests/day)
+        # Alternative: Use OSRM (completely free, self-hosted or public instance)
+        osrm_url = "https://router.project-osrm.org/route/v1"
+        
+        coords = f"{origin_info['details']['longitude']},{origin_info['details']['latitude']};{dest_info['details']['longitude']},{dest_info['details']['latitude']}"
+        
+        params = {
+            "overview": "full",
+            "geometries": "geojson"
+        }
+        
+        response = requests.get(f"{osrm_url}/driving/{coords}", params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            route = data["routes"][0]
+            
+            return {
+                "success": True,
+                "route": {
+                    "origin": origin,
+                    "destination": destination,
+                    "mode": mode,
+                    "distance": f"{route['distance']/1000:.1f} km",
+                    "duration": f"{route['duration']/60:.1f} minutes",
+                    "geometry": route.get("geometry")
+                }
             }
-        ]
-    }
-    
-    # Add waypoint steps if provided
-    if waypoints:
-        for i, waypoint in enumerate(waypoints):
-            route_info["steps"].append({
-                "instruction": f"Stop at {waypoint}",
-                "distance": f"{50 * (i + 1)} km",
-                "duration": f"{30 * (i + 1)} min"
-            })
-    
-    route_info["steps"].append({
-        "instruction": f"Arrive at {destination}",
-        "distance": "342 km",
-        "duration": "4h 15min"
-    })
-    
-    return {
-        "success": True,
-        "route": route_info,
-        "alternative_routes": [
-            {
-                "name": "Scenic route",
-                "distance": "385 km",
-                "duration": "5h 30min",
-                "highlights": ["Mountain views", "Historic towns"]
-            },
-            {
-                "name": "Fastest route",
-                "distance": "325 km",
-                "duration": "3h 45min",
-                "tolls": "$45"
+        else:
+            # Fallback to simple calculation
+            distance_result = await calculate_distance(origin, destination)
+            return {
+                "success": True,
+                "route": {
+                    "origin": origin,
+                    "destination": destination,
+                    "mode": mode,
+                    "total_distance": distance_result.get("distance", {}).get("kilometers", 0),
+                    "estimated_duration": distance_result.get("estimated_travel_time", {}).get("driving", "Unknown")
+                },
+                "note": "Using estimated route (detailed routing unavailable)"
             }
-        ]
-    }
-
-
-@mcp.tool()
-async def find_nearby_places(
-    location: str,
-    category: str,
-    radius_km: float = 5.0,
-    limit: int = 10
-) -> Dict[str, Any]:
-    """
-    Find nearby places of a specific category.
-    
-    Args:
-        location: Center location for search
-        category: Category of places ('restaurant', 'hotel', 'attraction', etc.)
-        radius_km: Search radius in kilometers
-        limit: Maximum number of results
-    
-    Returns:
-        List of nearby places matching the category
-    """
-    # Mock nearby places - in production, would use Places API
-    categories_map = {
-        "restaurant": [
-            {"name": "Le Bistro Local", "rating": 4.5, "distance": "0.3 km", "price": "$$"},
-            {"name": "Pasta Paradise", "rating": 4.2, "distance": "0.5 km", "price": "$$$"},
-            {"name": "Street Food Market", "rating": 4.7, "distance": "0.8 km", "price": "$"},
-            {"name": "Fine Dining Experience", "rating": 4.9, "distance": "1.2 km", "price": "$$$$"}
-        ],
-        "hotel": [
-            {"name": "Grand Hotel", "rating": 4.6, "distance": "0.2 km", "stars": 5},
-            {"name": "Budget Inn", "rating": 3.8, "distance": "0.7 km", "stars": 2},
-            {"name": "Boutique Suites", "rating": 4.4, "distance": "1.0 km", "stars": 4},
-            {"name": "Hostel Central", "rating": 4.1, "distance": "0.4 km", "stars": 2}
-        ],
-        "attraction": [
-            {"name": "Historic Museum", "rating": 4.7, "distance": "0.5 km", "type": "museum"},
-            {"name": "City Park", "rating": 4.3, "distance": "0.3 km", "type": "park"},
-            {"name": "Art Gallery", "rating": 4.5, "distance": "1.1 km", "type": "gallery"},
-            {"name": "Famous Monument", "rating": 4.8, "distance": "0.9 km", "type": "landmark"}
-        ],
-        "shopping": [
-            {"name": "Main Shopping Street", "rating": 4.2, "distance": "0.4 km", "type": "street"},
-            {"name": "Local Market", "rating": 4.6, "distance": "0.6 km", "type": "market"},
-            {"name": "Shopping Mall", "rating": 3.9, "distance": "2.1 km", "type": "mall"},
-            {"name": "Artisan Shops", "rating": 4.4, "distance": "0.8 km", "type": "boutique"}
-        ]
-    }
-    
-    places = categories_map.get(category.lower(), [])
-    
-    # Filter by radius
-    filtered_places = []
-    for place in places:
-        distance_str = place.get("distance", "0 km")
-        distance = float(distance_str.replace(" km", ""))
-        if distance <= radius_km:
-            filtered_places.append(place)
-    
-    # Limit results
-    filtered_places = filtered_places[:limit]
-    
-    return {
-        "success": True,
-        "location": location,
-        "category": category,
-        "radius_km": radius_km,
-        "places_found": len(filtered_places),
-        "places": filtered_places
-    }
-
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @mcp.tool()
 async def get_weather_forecast(
@@ -318,63 +257,69 @@ async def get_weather_forecast(
 ) -> Dict[str, Any]:
     """
     Get weather forecast for a location.
-    
-    Args:
-        location: Location for weather forecast
-        days: Number of days to forecast (max 14)
-    
-    Returns:
-        Weather forecast information
+    Uses free weather API (OpenWeatherMap requires API key, but you can use wttr.in as free alternative)
     """
-    # Mock weather data - in production, would use weather API
-    import random
-    
-    forecast = []
-    for i in range(min(days, 14)):
-        day_forecast = {
-            "day": i + 1,
-            "date": f"2025-12-{1 + i:02d}",
-            "temperature": {
-                "high": random.randint(15, 30),
-                "low": random.randint(5, 15)
-            },
-            "conditions": random.choice(["Sunny", "Partly Cloudy", "Cloudy", "Light Rain", "Clear"]),
-            "precipitation": f"{random.randint(0, 60)}%",
-            "humidity": f"{random.randint(40, 80)}%",
-            "wind": f"{random.randint(5, 25)} km/h"
-        }
-        forecast.append(day_forecast)
-    
-    return {
-        "success": True,
-        "location": location,
-        "forecast_days": len(forecast),
-        "forecast": forecast,
-        "summary": f"{days}-day forecast for {location}"
-    }
+    try:
+        # Option 1: Use wttr.in (completely free, no API key)
+        import requests
+        
+        # Get coordinates first
+        location_info = await get_location_info(location)
+        if not location_info.get("success"):
+            return {"success": False, "error": "Location not found"}
+        
+        lat = location_info["details"]["latitude"]
+        lon = location_info["details"]["longitude"]
+        
+        # Use wttr.in API (free, no key required)
+        url = f"https://wttr.in/{lat},{lon}?format=j1"
+        response = requests.get(url, headers={"User-Agent": "TravelGenie/1.0"})
+        
+        if response.status_code == 200:
+            data = response.json()
+            forecast = []
+            
+            for i, day in enumerate(data.get("weather", [])[:min(days, 3)]):
+                forecast.append({
+                    "day": i + 1,
+                    "date": day.get("date", ""),
+                    "temperature": {
+                        "high": day.get("maxtempC", "N/A"),
+                        "low": day.get("mintempC", "N/A")
+                    },
+                    "conditions": day.get("hourly", [{}])[0].get("weatherDesc", [{}])[0].get("value", "Unknown"),
+                    "precipitation": f"{day.get('hourly', [{}])[0].get('precipMM', 0)}mm",
+                })
+            
+            return {
+                "success": True,
+                "location": location,
+                "forecast_days": len(forecast),
+                "forecast": forecast
+            }
+        else:
+            return {"success": False, "error": "Weather service unavailable"}
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
-
-@mcp.resource("maps://current-location")
-async def get_current_location() -> str:
-    """
-    Get the current user location.
-    
-    Returns:
-        JSON string of current location
-    """
-    # Mock current location
-    current = {
-        "latitude": 40.7128,
-        "longitude": -74.0060,
-        "accuracy": "high",
-        "city": "New York",
-        "country": "USA",
-        "timestamp": "2025-11-08T10:30:00Z"
-    }
-    return json.dumps(current, indent=2)
-
-
-# Main entry point for stdio server
+# Main entry point
 if __name__ == "__main__":
-    # Run the FastMCP server with stdio transport
-    mcp.run(transport="stdio")
+    import os
+    
+    # Get transport type from environment or default to stdio
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
+    
+    if transport in ["sse", "http"]:
+        # Get host and port from environment
+        host = os.getenv("MCP_HOST", "localhost")
+        port = int(os.getenv("MCP_PORT", 8001))
+        
+        # Run with SSE transport on specified port
+        mcp.run(transport="sse", host=host, port=port)
+        print(f"Starting MCP server on {host}:{port} with {transport} transport")
+    else:
+        # Run with stdio transport (default, backward compatible)
+        mcp.run(transport="stdio")
+        port = os.getenv("MCP_PORT", "N/A")
+        print(f"Starting MCP server with stdio transport (configured port: {port})")
