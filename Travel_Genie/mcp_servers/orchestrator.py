@@ -5,6 +5,7 @@ Uses stdio transport for efficient process management
 
 import asyncio
 import json
+import os
 import subprocess
 import sys
 from typing import Dict, List, Optional, Any, Tuple
@@ -22,13 +23,29 @@ logger = logging.getLogger(__name__)
 
 class MCPServerManager:
     """
-    Manages multiple MCP servers using stdio transport.
+    Manages multiple MCP servers using stdio or HTTP/SSE transport.
     Handles server lifecycle, communication, and coordination.
+    Supports port and host configuration.
     """
     
-    def __init__(self):
+    def __init__(self, config: Optional[Any] = None):
+        """
+        Initialize MCP Server Manager.
+        
+        Args:
+            config: Optional ServerConfig instance. If None, loads from utils.config
+        """
+        # Import here to avoid circular imports
+        if config is None:
+            from utils.config import get_config
+            config = get_config().server_config
+        
+        self.config = config
         self.servers: Dict[str, subprocess.Popen] = {}
-        self.server_configs = {
+        
+        # Build server configs from config object, with fallback to defaults
+        self.server_configs = {}
+        default_configs = {
             "itinerary": {
                 "path": "mcp_servers/itinerary_server.py",
                 "name": "travel-itinerary",
@@ -45,7 +62,21 @@ class MCPServerManager:
                 "description": "Handles reservations and bookings"
             }
         }
+        
+        # Merge config with defaults
+        for server_type, default in default_configs.items():
+            server_cfg = config.servers.get(server_type, {})
+            self.server_configs[server_type] = {
+                **default,
+                **server_cfg,
+                "path": server_cfg.get("path", default["path"]),
+                "host": server_cfg.get("host", "localhost"),
+                "port": server_cfg.get("port", 8000 + list(default_configs.keys()).index(server_type)),
+                "transport": server_cfg.get("transport", "stdio")
+            }
+        
         self.server_processes: Dict[str, asyncio.subprocess.Process] = {}
+        self.server_urls: Dict[str, str] = {}  # Store server URLs for HTTP/SSE transport
     
     async def start_server(self, server_type: str) -> bool:
         """
@@ -73,16 +104,45 @@ class MCPServerManager:
             return False
         
         try:
-            # Start the server process with stdio transport
-            process = await asyncio.create_subprocess_exec(
-                sys.executable, str(server_path),
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
+            transport = config.get("transport", "stdio")
+            host = config.get("host", "localhost")
+            port = config.get("port", 8000)
+            
+            if transport in ["sse", "http"]:
+                # Start server with HTTP/SSE transport on specific port
+                env = os.environ.copy()
+                env["MCP_HOST"] = str(host)
+                env["MCP_PORT"] = str(port)
+                env["MCP_TRANSPORT"] = transport
+                
+                process = await asyncio.create_subprocess_exec(
+                    sys.executable, str(server_path),
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=env
+                )
+                
+                self.server_urls[server_type] = f"http://{host}:{port}"
+                logger.info(f"Started {server_type} server on {host}:{port} with {transport} transport (PID: {process.pid})")
+            else:
+                # Start server with stdio transport (default, backward compatible)
+                # Optionally pass port/host as env vars for future use
+                env = os.environ.copy()
+                env["MCP_HOST"] = str(host)
+                env["MCP_PORT"] = str(port)
+                env["MCP_TRANSPORT"] = "stdio"
+                
+                process = await asyncio.create_subprocess_exec(
+                    sys.executable, str(server_path),
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=env
+                )
+                logger.info(f"Started {server_type} server with stdio transport on port {port} (PID: {process.pid})")
             
             self.server_processes[server_type] = process
-            logger.info(f"Started {server_type} server (PID: {process.pid})")
             return True
             
         except Exception as e:
@@ -154,7 +214,8 @@ class MCPServerManager:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Send a JSON-RPC request to an MCP server via stdio.
+        Send a JSON-RPC request to an MCP server.
+        Supports both stdio and HTTP/SSE transports.
         
         Args:
             server_type: Target server type
@@ -171,6 +232,26 @@ class MCPServerManager:
                 "error_code": "SERVER_NOT_RUNNING"
             }
         
+        config = self.server_configs.get(server_type, {})
+        transport = config.get("transport", "stdio")
+        
+        # Route to appropriate transport method
+        if transport in ["sse", "http"]:
+            return await self._send_http_request(server_type, method, params)
+        else:
+            # Default to stdio (backward compatible)
+            return await self._send_stdio_request(server_type, method, params)
+    
+    async def _send_stdio_request(
+        self,
+        server_type: str,
+        method: str,
+        params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Send request via stdio transport (existing implementation).
+        Maintains backward compatibility.
+        """
         process = self.server_processes[server_type]
         
         # Check if process is still alive
@@ -257,6 +338,55 @@ class MCPServerManager:
             return {
                 "error": str(e),
                 "error_code": "UNEXPECTED_ERROR",
+                "server": server_type,
+                "method": method
+            }
+    
+    async def _send_http_request(
+        self,
+        server_type: str,
+        method: str,
+        params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Send request via HTTP/SSE transport.
+        """
+        server_url = self.server_urls.get(server_type)
+        if not server_url:
+            return {
+                "error": "Server URL not found for HTTP transport",
+                "error_code": "URL_NOT_FOUND"
+            }
+        
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": params or {}
+        }
+        
+        try:
+            import httpx
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{server_url}/mcp",
+                    json=request,
+                    headers={"Content-Type": "application/json"}
+                )
+                response.raise_for_status()
+                return response.json()
+        except ImportError:
+            logger.error("httpx not installed. Install with: pip install httpx")
+            return {
+                "error": "HTTP transport requires httpx package",
+                "error_code": "MISSING_DEPENDENCY"
+            }
+        except Exception as e:
+            logger.error(f"HTTP request failed for {server_type}: {e}")
+            return {
+                "error": str(e),
+                "error_code": "HTTP_ERROR",
                 "server": server_type,
                 "method": method
             }

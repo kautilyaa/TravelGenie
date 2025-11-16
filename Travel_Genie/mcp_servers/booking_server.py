@@ -480,7 +480,23 @@ async def get_active_bookings() -> str:
     return json.dumps(bookings, indent=2)
 
 
-# Main entry point for stdio server
+# Main entry point
 if __name__ == "__main__":
-    # Run the FastMCP server with stdio transport
-    mcp.run(transport="stdio")
+    import os
+    
+    # Get transport type from environment or default to stdio
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
+    
+    if transport in ["sse", "http"]:
+        # Get host and port from environment
+        host = os.getenv("MCP_HOST", "localhost")
+        port = int(os.getenv("MCP_PORT", 8002))
+        
+        # Run with SSE transport on specified port
+        mcp.run(transport="sse", host=host, port=port)
+        print(f"Starting MCP server on {host}:{port} with {transport} transport")
+    else:
+        # Run with stdio transport (default, backward compatible)
+        mcp.run(transport="stdio")
+        port = os.getenv("MCP_PORT", "N/A")
+        print(f"Starting MCP server with stdio transport (configured port: {port})")

@@ -3,6 +3,10 @@ YOLO11 Video Analyzer - Real-time object detection on YouTube video feeds
 Uses Ultralytics YOLO11 for live inference on travel-related video content
 """
 
+import os
+# Set pafy to use internal backend (doesn't require youtube-dl)
+os.environ['PAFY_BACKEND'] = 'internal'
+
 import cv2
 import numpy as np
 from typing import Dict, List, Optional, Any, Tuple, Generator
@@ -266,11 +270,24 @@ class YOLO11Analyzer:
         # Initialize video stream
         stream = YouTubeVideoStream(url)
         if not stream.start():
+            # Return consistent summary structure even on error
             return VideoAnalysisResult(
                 video_url=url,
                 total_frames=0,
                 detections=[],
-                summary={"error": "Failed to start stream"},
+                summary={
+                    "error": "Failed to start stream",
+                    "total_detections": 0,
+                    "unique_objects": 0,
+                    "travel_context": "unknown",
+                    "top_objects": [],
+                    "travel_indicators": {
+                        "has_luggage": False,
+                        "has_transportation": False,
+                        "has_people": False,
+                        "outdoor_scene": False
+                    }
+                },
                 duration=0,
                 fps=0,
                 resolution=(0, 0)
