@@ -10,18 +10,6 @@ MCP server for searching events and activities using SerpAPI's Google Events API
 - **filter_events_by_type**: Filter by category (concerts, festivals, etc.)
 - **filter_events_by_venue**: Filter by specific venues
 
-## Setup
-
-1. Install dependencies: `uv sync`
-2. Set `SERPAPI_KEY` environment variable
-3. Configure Claude Desktop to use this server
-
-## Usage
-
-```
-Search for concerts in New York this weekend
-```
-
 ## Requirements
 
 - Python 3.12.1+
