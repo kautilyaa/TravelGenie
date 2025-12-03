@@ -1,5 +1,7 @@
 # TravelGenie - Intelligent Travel Planning Assistant
 
+![TravelGenie](assets/img/Gemini_Generated_Image_36apt236apt236ap.png)
+
 **TravelGenie** is a comprehensive, AI-powered travel planning ecosystem that orchestrates multiple specialized services to create detailed travel itineraries. Built on the Model Context Protocol (MCP), it enables Claude AI to seamlessly coordinate flights, hotels, events, weather, currency conversion, and real-time traffic analysis—all in one intelligent system.
 
 ![MCP](https://img.shields.io/badge/MCP-Compatible-blue)
