@@ -1,0 +1,31 @@
+[
+  {
+    "ParameterKey": "ProjectName",
+    "ParameterValue": "travel-assistant-slack-bot"
+  },
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "production"
+  },
+  {
+    "ParameterKey": "VpcCidr",
+    "ParameterValue": "10.0.0.0/16"
+  },
+  {
+    "ParameterKey": "ContainerCpu",
+    "ParameterValue": "512"
+  },
+  {
+    "ParameterKey": "ContainerMemory",
+    "ParameterValue": "1024"
+  },
+  {
+    "ParameterKey": "DesiredTaskCount",
+    "ParameterValue": "1"
+  },
+  {
+    "ParameterKey": "MaxTaskCount",
+    "ParameterValue": "3"
+  }
+]
+

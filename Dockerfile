@@ -1,21 +1,25 @@
 FROM python:3.12-slim
 
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install
+# Copy requirements.txt
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY . .
+# Install the specified packages
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
-# Expose port
-EXPOSE 8000
+COPY slack_bot.py .
+COPY claude_orchestrator.py .
+COPY dynamodb_database.py .
+COPY servers/ ./servers/
 
-# Run application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Add environment variables from .env file  
+RUN export $(cat .env | xargs)  
+
+# Copy .env 
+# COPY .env .
+
+# Run the Slack bot
+CMD ["python", "slack_bot.py"]
