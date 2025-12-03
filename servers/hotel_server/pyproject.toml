@@ -1,7 +1,7 @@
 [project]
 name = "hotel-server"
 version = "0.1.0"
-description = "Add your description here"
+description = "MCP server for hotel and vacation rental search using SerpAPI"
 readme = "README.md"
 requires-python = ">=3.12.1"
 dependencies = [
