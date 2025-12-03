@@ -1,0 +1,16 @@
+[project]
+name = "traffic-crowd-server"
+version = "0.1.0"
+description = "Real-time traffic and crowd analysis server using computer vision"
+readme = "README.md"
+requires-python = ">=3.12.1"
+dependencies = [
+    "fastmcp>=2.5.1",
+    "mcp>=1.9.1",
+    "requests>=2.32.3",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "yt-dlp>=2023.12.30",
+    "typing-extensions>=4.13.2",
+]
+
