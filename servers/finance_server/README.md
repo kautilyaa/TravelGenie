@@ -31,7 +31,7 @@ A Model Context Protocol (MCP) server that provides financial data and analysis 
 ## Installation
 
 ### 1. Clone/Download the Server Code
-Save the `finance_search_server.py` file to your desired directory.
+Save the `finance_server.py` file to your desired directory.
 
 ### 2. Set up the Project
 ```bash
@@ -69,7 +69,7 @@ Add the server configuration to your Claude Desktop config file.
         "/path/to/your/finance-search-server",
         "run",
         "python",
-        "finance_search_server.py"
+        "finance_server.py"
       ],
       "env": {
         "SERPAPI_KEY": "your_serpapi_key_here"
@@ -150,7 +150,7 @@ The server includes comprehensive error handling for:
 ### Project Structure
 ```
 finance-search-server/
-├── finance_search_server.py    # Main server code
+├── finance_server.py    # Main server code
 ├── pyproject.toml             # UV project configuration
 ├── finance/                   # Stored search results (created automatically)
 └── README.md                  # This file
@@ -159,11 +159,11 @@ finance-search-server/
 ### Running Locally
 ```bash
 # Run the server directly
-uv run python finance_search_server.py
+uv run python finance_server.py
 
 # Or activate the environment and run
 uv shell
-python finance_search_server.py
+python finance_server.py
 ```
 
 ### Testing
@@ -175,7 +175,7 @@ uv add --dev pytest black flake8
 uv run pytest
 
 # Format code
-uv run black finance_search_server.py
+uv run black finance_server.py
 ```
 
 ## Troubleshooting
