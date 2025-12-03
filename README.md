@@ -748,7 +748,7 @@ We welcome contributions! Here's how you can help:
 
 ---
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License. See LICENSE file for details.
 
@@ -760,8 +760,8 @@ Individual servers may have different licenses—check each server's README.
 
 ### Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
+- **Issues**: [GitHub Issues](https://github.com/kautilyaa/TravelGenie/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/kautilyaa/TravelGenie/discussions)
 - **Documentation**: Check individual server READMEs in `servers/*/README.md`
 
 ### API Provider Support
@@ -787,12 +787,6 @@ Individual servers may have different licenses—check each server's README.
 - Thanks to all API providers: SerpAPI, Open-Meteo, OpenStreetMap
 
 ---
-
-## What's Next?
-
-**The power of MCP lies in its ability to orchestrate complex, multi-step workflows that would traditionally require multiple apps and manual coordination.** 
-
-With TravelGenie, Claude becomes your intelligent travel agent, capable of handling sophisticated requests that span multiple domains and data sources. Whether you're planning a weekend getaway or a multi-city international tour, TravelGenie orchestrates everything seamlessly.
 
 **Ready to plan your next adventure?** Start with the Streamlit UI or integrate the Slack bot into your workspace!
 
