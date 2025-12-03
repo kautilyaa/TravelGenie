@@ -748,15 +748,7 @@ We welcome contributions! Here's how you can help:
 - Add docstrings to functions and classes
 - Include comments for complex logic
 
----
 
-##  License
-
-This project is licensed under the MIT License. See LICENSE file for details.
-
-Individual servers may have different licenses—check each server's README.
-
----
 
 ## Support & Resources
 
@@ -778,6 +770,14 @@ Individual servers may have different licenses—check each server's README.
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [FastMCP](https://github.com/jlowin/fastmcp)
 - [Claude Desktop](https://claude.ai/download)
+
+---
+---
+
+##  License
+
+This project is licensed under the MIT License. See LICENSE file for details.
+
 
 ---
 
