@@ -10,19 +10,6 @@ MCP server for financial data using SerpAPI's Google Finance API.
 - **get_historical_data**: Fetch historical price data
 - **filter_stocks_by_price_movement**: Filter market data by price movement
 
-## Setup
-
-1. Install dependencies: `uv sync`
-2. Set `SERPAPI_KEY` environment variable
-3. Configure Claude Desktop to use this server
-
-## Usage
-
-```
-Convert $1,000 USD to EUR, GBP, and JPY
-Analyze AAPL stock over the past year
-```
-
 ## Requirements
 
 - Python 3.12.1+

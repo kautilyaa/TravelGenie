@@ -10,18 +10,6 @@ MCP server for real-time traffic and crowd analysis using computer vision.
 - **get_traffic_patterns**: Get historical traffic patterns
 - **compare_location_traffic**: Compare traffic across multiple locations
 
-## Setup
-
-1. Install dependencies: `uv sync`
-2. Configure Claude Desktop to use this server
-
-## Usage
-
-```
-Analyze traffic at Times Square, New York
-Analyze this YouTube live stream: https://youtube.com/watch?v=...
-```
-
 ## Requirements
 
 - Python 3.12.1+
