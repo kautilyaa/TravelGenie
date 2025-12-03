@@ -38,7 +38,7 @@ Parameters:
     Type: String
     NoEcho: true
     Description: SerpAPI Key for flights, hotels, events
-    Default: '32d027365109aa1dc90ba12b38caf731ba02cdabb1adacd75080467f4ed02f53'
+    Default: ''
 
 Resources:
   # ============================================
