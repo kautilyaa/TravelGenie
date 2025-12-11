@@ -26,7 +26,7 @@ try:
     import geopy
     import requests
 except ImportError as e:
-    print(f"❌ ERROR: Missing required module: {e}")
+    print(f"ERROR: Missing required module: {e}")
     print("Please ensure you're running Streamlit with the virtual environment activated:")
     print("  source .venv/bin/activate")
     print("  streamlit run streamlit_app.py")
@@ -42,7 +42,6 @@ except ImportError:
 
 st.set_page_config(
     page_title="Travel Assistant - MCP Orchestration",
-    page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -52,11 +51,11 @@ if 'results' not in st.session_state:
 if 'api_keys_set' not in st.session_state:
     st.session_state.api_keys_set = False
 
-st.title("🌍 Travel Assistant - MCP Server Orchestration")
+st.title("Travel Assistant - MCP Server Orchestration")
 st.markdown("**Orchestrate 7 MCP servers** to create comprehensive travel plans")
 
 with st.sidebar:
-    st.header("⚙️ API Configuration")
+    st.header("API Configuration")
     
     serpapi_key = st.text_input(
         "SerpAPI Key",
@@ -65,19 +64,19 @@ with st.sidebar:
         help="Required for flights, hotels, events, and finance servers"
     )
     
-    st.info("ℹ️ Weather Server uses Open-Meteo API (free, no API key required)")
+    st.info("Weather Server uses Open-Meteo API (free, no API key required)")
     
     if serpapi_key:
         os.environ["SERPAPI_KEY"] = serpapi_key
         st.session_state.api_keys_set = True
-        st.success("✅ SerpAPI key set")
+        st.success("SerpAPI key set")
     else:
-        st.warning("⚠️ SerpAPI key required")
+        st.warning("SerpAPI key required")
         st.session_state.api_keys_set = False
     
     st.divider()
     
-    st.header("📊 Server Status")
+    st.header("Server Status")
     server_status = {}
     
     servers_to_check = {
@@ -93,14 +92,14 @@ with st.sidebar:
     for server_name, module_path in servers_to_check.items():
         try:
             __import__(module_path)
-            server_status[server_name] = "✅ Available"
+            server_status[server_name] = "Available"
         except Exception as e:
-            server_status[server_name] = f"❌ Error: {str(e)[:30]}"
+            server_status[server_name] = f"Error: {str(e)[:30]}"
     
     for server, status in server_status.items():
         st.text(f"{server}: {status}")
 
-tab1, tab2, tab3, tab4 = st.tabs(["🎯 Plan Trip", "💬 Chat with Claude", "🔍 Individual Searches", "📋 View Results"])
+tab1, tab2, tab3, tab4 = st.tabs(["Plan Trip", "Chat with Claude", "Individual Searches", "View Results"])
 
 with tab1:
     st.header("Complete Travel Planning")
@@ -110,19 +109,19 @@ with tab1:
         col1, col2 = st.columns(2)
         
         with col1:
-            origin = st.text_input("📍 Origin", placeholder="e.g., Reston, Virginia", key="origin")
-            destination = st.text_input("📍 Destination", placeholder="e.g., Banff, Alberta", key="dest")
-            start_date = st.date_input("📅 Start Date", value=datetime.now().date() + timedelta(days=7), key="start")
-            end_date = st.date_input("📅 End Date", value=datetime.now().date() + timedelta(days=14), key="end")
+            origin = st.text_input("Origin", placeholder="e.g., Reston, Virginia", key="origin")
+            destination = st.text_input("Destination", placeholder="e.g., Banff, Alberta", key="dest")
+            start_date = st.date_input("Start Date", value=datetime.now().date() + timedelta(days=7), key="start")
+            end_date = st.date_input("End Date", value=datetime.now().date() + timedelta(days=14), key="end")
         
         with col2:
-            adults = st.number_input("👥 Adults", min_value=1, max_value=10, value=2, key="adults")
-            children = st.number_input("👶 Children", min_value=0, max_value=10, value=0, key="children")
-            budget = st.number_input("💰 Budget (USD)", min_value=0, value=5000, key="budget")
-            currency = st.selectbox("💵 Currency", ["USD", "CAD", "EUR", "GBP", "JPY"], key="currency")
+            adults = st.number_input("Adults", min_value=1, max_value=10, value=2, key="adults")
+            children = st.number_input("Children", min_value=0, max_value=10, value=0, key="children")
+            budget = st.number_input("Budget (USD)", min_value=0, value=5000, key="budget")
+            currency = st.selectbox("Currency", ["USD", "CAD", "EUR", "GBP", "JPY"], key="currency")
         
         interests = st.multiselect(
-            "🎯 Interests",
+            "Interests",
             ["Hiking", "Sight-seeing", "Dining", "Museums", "Nightlife", "Shopping", "Beaches", "Adventure Sports"],
             default=["Hiking", "Sight-seeing", "Dining", "Museums"],
             key="interests"
@@ -133,29 +132,29 @@ with tab1:
         col_flight, col_hotel, col_event, col_weather, col_finance = st.columns(5)
         
         with col_flight:
-            use_flights = st.checkbox("✈️ Flights", value=True)
+            use_flights = st.checkbox("Flights", value=True)
         with col_hotel:
-            use_hotels = st.checkbox("🏨 Hotels", value=True)
+            use_hotels = st.checkbox("Hotels", value=True)
         with col_event:
-            use_events = st.checkbox("🎭 Events", value=True)
+            use_events = st.checkbox("Events", value=True)
         with col_weather:
-            use_weather = st.checkbox("🌤️ Weather", value=True)
+            use_weather = st.checkbox("Weather", value=True)
         with col_finance:
-            use_finance = st.checkbox("💰 Finance", value=True)
+            use_finance = st.checkbox("Finance", value=True)
         
-        submitted = st.form_submit_button("🚀 Plan My Trip", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Plan My Trip", type="primary", use_container_width=True)
     
     if submitted:
         if not st.session_state.api_keys_set:
-            st.error("⚠️ Please enter your SerpAPI key in the sidebar")
+            st.error("Please enter your SerpAPI key in the sidebar")
             st.stop()
         
         if not origin or not destination:
-            st.error("⚠️ Please fill in origin and destination")
+            st.error("Please fill in origin and destination")
             st.stop()
         
         if end_date <= start_date:
-            st.error("⚠️ End date must be after start date")
+            st.error("End date must be after start date")
             st.stop()
         
         progress_bar = st.progress(0)
@@ -169,7 +168,7 @@ with tab1:
         
         results = {}
         
-        status_text.text("🗺️ Step 1: Getting location coordinates...")
+        status_text.text("Step 1: Getting location coordinates...")
         progress_bar.progress(current_step / total_steps)
         try:
             from servers.geocoder_server.geocoder_server import geocode_location
@@ -191,16 +190,16 @@ with tab1:
             dest_lon = dest_location_data.get("longitude", "N/A")
             
             if origin_lat != "N/A" and dest_lat != "N/A":
-                st.success(f"✅ Geocoded: {origin} → {destination} | ({origin_lat}, {origin_lon}) → ({dest_lat}, {dest_lon})")
+                st.success(f"Geocoded: {origin} → {destination} | ({origin_lat}, {origin_lon}) → ({dest_lat}, {dest_lon})")
             else:
-                st.warning(f"⚠️ Geocoding incomplete: {origin} → {destination} | Check coordinates")
+                st.warning(f"Geocoding incomplete: {origin} → {destination} | Check coordinates")
             current_step += 1
         except Exception as e:
-            st.error(f"❌ Geocoding error: {e}")
+            st.error(f"Geocoding error: {e}")
             results["geocoding"] = None
         
         if use_flights:
-            status_text.text(f"✈️ Step {current_step + 1}/{total_steps}: Searching for flights...")
+            status_text.text(f"Step {current_step + 1}/{total_steps}: Searching for flights...")
             progress_bar.progress(current_step / total_steps)
             try:
                 from servers.flight_server.flight_server import search_flights
@@ -233,21 +232,21 @@ with tab1:
                 other_flights = flight_results.get("other_flights", [])
                 flight_count = len(best_flights) + len(other_flights)
                 if flight_count > 0:
-                    st.success(f"✅ Found {flight_count} flight options ({len(best_flights)} best, {len(other_flights)} other)")
+                    st.success(f"Found {flight_count} flight options ({len(best_flights)} best, {len(other_flights)} other)")
                 else:
                     total_best = flight_results.get("total_best_flights", 0)
                     total_other = flight_results.get("total_other_flights", 0)
                     if total_best > 0 or total_other > 0:
-                        st.success(f"✅ Found {total_best + total_other} flight options ({total_best} best, {total_other} other)")
+                        st.success(f"Found {total_best + total_other} flight options ({total_best} best, {total_other} other)")
                     else:
-                        st.warning(f"⚠️ No flights found. Try using airport codes (e.g., 'IAD' for Reston area, 'YYC' for Calgary/Banff area)")
+                        st.warning(f"No flights found. Try using airport codes (e.g., 'IAD' for Reston area, 'YYC' for Calgary/Banff area)")
                 current_step += 1
             except Exception as e:
-                st.error(f"❌ Flight search error: {e}")
+                st.error(f"Flight search error: {e}")
                 results["flights"] = None
         
         if use_hotels:
-            status_text.text(f"🏨 Step {current_step + 1}/{total_steps}: Searching for hotels...")
+            status_text.text(f"Step {current_step + 1}/{total_steps}: Searching for hotels...")
             progress_bar.progress(current_step / total_steps)
             try:
                 from servers.hotel_server.hotel_server import search_hotels
@@ -276,16 +275,16 @@ with tab1:
                 results["hotels"] = hotel_results
                 hotel_count = hotel_results.get("total_properties", 0)
                 if hotel_count > 0:
-                    st.success(f"✅ Found {hotel_count} hotel options")
+                    st.success(f"Found {hotel_count} hotel options")
                 else:
-                    st.warning(f"⚠️ No hotels found for {destination}")
+                    st.warning(f"No hotels found for {destination}")
                 current_step += 1
             except Exception as e:
-                st.error(f"❌ Hotel search error: {e}")
+                st.error(f"Hotel search error: {e}")
                 results["hotels"] = None
         
         if use_weather:
-            status_text.text(f"🌤️ Step {current_step + 1}/{total_steps}: Getting weather forecast...")
+            status_text.text(f"Step {current_step + 1}/{total_steps}: Getting weather forecast...")
             progress_bar.progress(current_step / total_steps)
             try:
                 from servers.weather_server.weather_server import get_weather_forecast
@@ -309,14 +308,14 @@ with tab1:
                             weather_results["location"]["coordinates"] = f"{lat}, {lon}"
                 
                 results["weather"] = weather_results
-                st.success("✅ Weather forecast retrieved")
+                st.success("Weather forecast retrieved")
                 current_step += 1
             except Exception as e:
-                st.error(f"❌ Weather error: {e}")
+                st.error(f"Weather error: {e}")
                 results["weather"] = None
         
         if use_events:
-            status_text.text(f"🎭 Step {current_step + 1}/{total_steps}: Finding local events...")
+            status_text.text(f"Step {current_step + 1}/{total_steps}: Finding local events...")
             progress_bar.progress(current_step / total_steps)
             try:
                 from servers.event_server.event_server import search_events
@@ -331,14 +330,14 @@ with tab1:
                 
                 results["events"] = event_results
                 event_count = len(event_results.get("events", []))
-                st.success(f"✅ Found {event_count} events")
+                st.success(f"Found {event_count} events")
                 current_step += 1
             except Exception as e:
-                st.error(f"❌ Event search error: {e}")
+                st.error(f"Event search error: {e}")
                 results["events"] = None
         
         if use_finance:
-            status_text.text(f"💰 Step {current_step + 1}/{total_steps}: Analyzing budget...")
+            status_text.text(f"Step {current_step + 1}/{total_steps}: Analyzing budget...")
             progress_bar.progress(current_step / total_steps)
             try:
                 from servers.finance_server.finance_server import convert_currency
@@ -393,19 +392,19 @@ with tab1:
                     "currency": currency
                 }
                 
-                st.success("✅ Budget analysis complete")
+                st.success("Budget analysis complete")
                 current_step += 1
             except Exception as e:
-                st.error(f"❌ Finance error: {e}")
+                st.error(f"Finance error: {e}")
                 results["currency_conversion"] = None
         
         progress_bar.progress(1.0)
-        status_text.text("✅ Complete!")
+        status_text.text("Complete!")
         
         st.session_state.results = results
         
         with results_container:
-            st.header("📊 Travel Plan Results")
+            st.header("Travel Plan Results")
             
             col1, col2, col3, col4 = st.columns(4)
             
@@ -432,7 +431,7 @@ with tab1:
                     st.metric("Remaining Budget", f"${remaining:,.2f}")
             
             if results.get("flights"):
-                st.subheader("✈️ Flight Options")
+                st.subheader("Flight Options")
                 best_flights = results["flights"].get("best_flights", [])
                 other_flights = results["flights"].get("other_flights", [])
                 
@@ -456,7 +455,7 @@ with tab1:
                     st.info("No flight results available. Try using airport codes (e.g., 'IAD' for Reston area, 'YYC' for Calgary/Banff area)")
             
             if results.get("hotels"):
-                st.subheader("🏨 Hotel Options")
+                st.subheader("Hotel Options")
                 hotels = results["hotels"].get("properties", [])
                 if hotels:
                     for i, hotel in enumerate(hotels[:5], 1):
@@ -469,33 +468,33 @@ with tab1:
                     st.info(f"No hotel results available for {destination}")
             
             if results.get("weather"):
-                st.subheader("🌤️ Weather Forecast")
+                st.subheader("Weather Forecast")
                 st.json(results["weather"])
             
             if results.get("events"):
-                st.subheader("🎭 Local Events")
+                st.subheader("Local Events")
                 events = results["events"].get("events", [])[:10]
                 for i, event in enumerate(events, 1):
                     with st.expander(f"Event {i}: {event.get('title', 'N/A')}"):
                         st.json(event)
             
             if results.get("budget_analysis"):
-                st.subheader("💰 Budget Analysis")
+                st.subheader("Budget Analysis")
                 st.json(results["budget_analysis"])
             
             st.download_button(
-                label="📥 Download Full Results (JSON)",
+                label="Download Full Results (JSON)",
                 data=json.dumps(results, indent=2, default=str),
                 file_name=f"travel_plan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                 mime="application/json"
             )
 
 with tab2:
-    st.header("💬 Chat with Claude - Travel Planning Assistant")
+    st.header("Chat with Claude - Travel Planning Assistant")
     st.markdown("**Have a conversation with Claude to plan your trip!** Claude will use all available travel services to help you.")
     
     if not CLAUDE_AVAILABLE:
-        st.error("❌ Anthropic SDK not installed. Please install it: `pip install anthropic`")
+        st.error("Anthropic SDK not installed. Please install it: `pip install anthropic`")
         st.stop()
     
     anthropic_api_key = st.sidebar.text_input(
@@ -506,8 +505,8 @@ with tab2:
     )
     
     if not anthropic_api_key:
-        st.warning("⚠️ Please enter your Anthropic API key in the sidebar to use Claude chat.")
-        st.info("💡 You can also set it as an environment variable: `ANTHROPIC_API_KEY`")
+        st.warning("Please enter your Anthropic API key in the sidebar to use Claude chat.")
+        st.info("You can also set it as an environment variable: `ANTHROPIC_API_KEY`")
         st.stop()
     
     if 'claude_messages' not in st.session_state:
@@ -518,13 +517,13 @@ with tab2:
             st.session_state.claude_client = Anthropic(api_key=anthropic_api_key)
             st.session_state.claude_api_key = anthropic_api_key
         except Exception as e:
-            st.error(f"❌ Error initializing Claude client: {e}")
+            st.error(f"Error initializing Claude client: {e}")
             st.stop()
     
     try:
         from claude_orchestrator import get_tool_definitions, execute_tool, get_system_prompt
     except ImportError as e:
-        st.error(f"❌ Could not import orchestrator: {e}")
+        st.error(f"Could not import orchestrator: {e}")
         st.stop()
     
     chat_container = st.container()
@@ -536,7 +535,7 @@ with tab2:
                 
                 if "tool_calls" in message and message["tool_calls"]:
                     st.markdown("---")
-                    st.markdown("**🔧 Tools Used:**")
+                    st.markdown("**Tools Used:**")
                     for i, tool_call in enumerate(message["tool_calls"], 1):
                         tool_name = tool_call.get("name", "Unknown")
                         tool_input = tool_call.get("input", {})
@@ -546,7 +545,7 @@ with tab2:
                 
                 if "status_messages" in message:
                     for status in message["status_messages"]:
-                        st.info(f"ℹ️ {status}")
+                        st.info(f"{status}")
     
     user_input = st.chat_input("Ask me about travel planning... (e.g., 'Plan a trip to Banff from Reston, Virginia for June 7-14, 2025')")
     
@@ -587,7 +586,7 @@ with tab2:
                 })
                 
                 model_name = "claude-3-5-sonnet-20241022"
-                thinking_placeholder.info("🤔 **Thinking...** Analyzing your request and planning the best approach.")
+                thinking_placeholder.info("**Thinking...** Analyzing your request and planning the best approach.")
                 
                 try:
                     response = st.session_state.claude_client.messages.create(
@@ -599,9 +598,9 @@ with tab2:
                     )
                 except Exception as model_error:
                     if "404" in str(model_error) or "not_found" in str(model_error).lower():
-                        status_placeholder.warning(f"⚠️ Model {model_name} not available. Using fallback model...")
+                        status_placeholder.warning(f"Model {model_name} not available. Using fallback model...")
                         model_name = "claude-3-haiku-20240307"
-                        thinking_placeholder.info("🤔 **Thinking...** Analyzing your request with fallback model.")
+                        thinking_placeholder.info("**Thinking...** Analyzing your request with fallback model.")
                         response = st.session_state.claude_client.messages.create(
                             model=model_name,
                             max_tokens=4096,
@@ -636,7 +635,7 @@ with tab2:
                                 tool_calls_info.append(tool_call_info)
                                 
                                 tool_status = st.empty()
-                                tool_status.info(f"🔧 **Executing:** `{tool_name}`")
+                                tool_status.info(f"**Executing:** `{tool_name}`")
                                 
                                 tool_result = execute_tool(tool_name, **tool_input)
                                 tool_results.append({
@@ -645,11 +644,11 @@ with tab2:
                                     "content": json.dumps(tool_result, indent=2, default=str)
                                 })
                                 
-                                tool_status.success(f"✅ **Completed:** `{tool_name}`")
+                                tool_status.success(f"**Completed:** `{tool_name}`")
                     
                     if tool_calls_info:
                         tool_calls_placeholder.markdown("---")
-                        tool_calls_placeholder.markdown("**🔧 Tools Executed:**")
+                        tool_calls_placeholder.markdown("**Tools Executed:**")
                         for i, tool_call in enumerate(tool_calls_info, 1):
                             tool_name = tool_call.get("name", "Unknown")
                             tool_input = tool_call.get("input", {})
@@ -675,7 +674,7 @@ with tab2:
                         round_tool_calls = []
                         
                         if iteration > 1:
-                            thinking_placeholder.info(f"🤔 **Analyzing results...** (Round {iteration})")
+                            thinking_placeholder.info(f"**Analyzing results...** (Round {iteration})")
                         
                         with tool_execution_container:
                             for content_block in current_response.content:
@@ -692,7 +691,7 @@ with tab2:
                                     round_tool_calls.append(tool_call_info)
                                     
                                     tool_status = st.empty()
-                                    tool_status.info(f"🔧 **Executing:** `{tool_name}`")
+                                    tool_status.info(f"**Executing:** `{tool_name}`")
                                     
                                     tool_result = execute_tool(tool_name, **tool_input)
                                     tool_results.append({
@@ -701,11 +700,11 @@ with tab2:
                                         "content": json.dumps(tool_result, indent=2, default=str)
                                     })
                                     
-                                    tool_status.success(f"✅ **Completed:** `{tool_name}`")
+                                    tool_status.success(f"**Completed:** `{tool_name}`")
                         
                         if round_tool_calls:
                             tool_calls_placeholder.markdown("---")
-                            tool_calls_placeholder.markdown(f"**🔧 Additional Tools Executed (Round {iteration}):**")
+                            tool_calls_placeholder.markdown(f"**Additional Tools Executed (Round {iteration}):**")
                             start_idx = len(tool_calls_info) - len(round_tool_calls) + 1
                             for i, tool_call in enumerate(round_tool_calls, start_idx):
                                 tool_name = tool_call.get("name", "Unknown")
@@ -722,7 +721,7 @@ with tab2:
                             "content": tool_results
                         })
                         
-                        thinking_placeholder.info("🤔 **Analyzing results...** Synthesizing information.")
+                        thinking_placeholder.info("**Analyzing results...** Synthesizing information.")
                         current_response = st.session_state.claude_client.messages.create(
                             model=model_name,
                             max_tokens=4096,
@@ -751,12 +750,12 @@ with tab2:
                     assistant_message["content"] = full_response
                 else:
                     if tool_calls_info:
-                        response_placeholder.info("✅ Tools executed successfully. Processing results...")
+                        response_placeholder.info("Tools executed successfully. Processing results...")
                 
                 st.session_state.claude_messages.append(assistant_message)
                 
             except Exception as e:
-                error_msg = f"❌ Error: {str(e)}"
+                error_msg = f"Error: {str(e)}"
                 response_placeholder.error(error_msg)
                 import traceback
                 st.code(traceback.format_exc())
@@ -769,7 +768,7 @@ with tab2:
         
         st.rerun()
     
-    if st.button("🗑️ Clear Chat History"):
+    if st.button("Clear Chat History"):
         st.session_state.claude_messages = []
         st.rerun()
 
@@ -783,7 +782,7 @@ with tab3:
     )
     
     if server_choice == "Flight":
-        st.subheader("✈️ Flight Search")
+        st.subheader("Flight Search")
         with st.form("flight_form"):
             col1, col2 = st.columns(2)
             with col1:
@@ -809,7 +808,7 @@ with tab3:
                     st.error(f"Error: {e}")
     
     elif server_choice == "Hotel":
-        st.subheader("🏨 Hotel Search")
+        st.subheader("Hotel Search")
         with st.form("hotel_form"):
             location = st.text_input("Location", "New York")
             check_in = st.date_input("Check-in", datetime.now().date() + timedelta(days=7))
@@ -830,7 +829,7 @@ with tab3:
                     st.error(f"Error: {e}")
     
     elif server_choice == "Event":
-        st.subheader("🎭 Event Search")
+        st.subheader("Event Search")
         with st.form("event_form"):
             query = st.text_input("Query", "concerts")
             location = st.text_input("Location", "San Francisco")
@@ -849,7 +848,7 @@ with tab3:
                     st.error(f"Error: {e}")
     
     elif server_choice == "Geocoder":
-        st.subheader("🗺️ Geocoder")
+        st.subheader("Geocoder")
         with st.form("geocoder_form"):
             location = st.text_input("Location", "New York, NY")
             
@@ -862,8 +861,8 @@ with tab3:
                     st.error(f"Error: {e}")
     
     elif server_choice == "Weather":
-        st.subheader("🌤️ Weather")
-        st.info("ℹ️ Using Open-Meteo API (free, no API key required)")
+        st.subheader("Weather")
+        st.info("Using Open-Meteo API (free, no API key required)")
         
         with st.form("weather_form"):
             input_type = st.radio(
@@ -892,7 +891,7 @@ with tab3:
                     try:
                         from servers.weather_server.weather_server import get_current_weather
                         weather_result = get_current_weather(location=location)
-                        st.success("✅ Current weather retrieved!")
+                        st.success("Current weather retrieved!")
                         st.json(weather_result)
                     except Exception as e:
                         st.error(f"Error: {e}")
@@ -908,7 +907,7 @@ with tab3:
                             forecast_days=forecast_days,
                             hourly=hourly
                         )
-                        st.success("✅ Weather forecast retrieved!")
+                        st.success("Weather forecast retrieved!")
                         st.json(weather_result)
                     except Exception as e:
                         st.error(f"Error: {e}")
@@ -916,7 +915,7 @@ with tab3:
                         st.code(traceback.format_exc())
     
     elif server_choice == "Finance":
-        st.subheader("💰 Finance")
+        st.subheader("Finance")
         with st.form("finance_form"):
             amount = st.number_input("Amount", value=100.0)
             from_curr = st.selectbox("From Currency", ["USD", "CAD", "EUR", "GBP", "JPY"])
@@ -935,13 +934,13 @@ with tab3:
                     st.error(f"Error: {e}")
 
 with tab4:
-    st.header("📋 Saved Results")
+    st.header("Saved Results")
     
     if st.session_state.results:
         st.json(st.session_state.results)
         
         st.download_button(
-            label="📥 Download Results (JSON)",
+            label="Download Results (JSON)",
             data=json.dumps(st.session_state.results, indent=2, default=str),
             file_name=f"travel_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json"

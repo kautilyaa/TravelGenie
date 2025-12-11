@@ -1,16 +1,16 @@
 # How YouTube Video Analysis Works
 
-## 🎯 Overview
+## Overview
 
 The YouTube video analysis feature allows you to analyze live streams or recorded videos from YouTube to detect crowd density, vehicle traffic, and foot traffic in real-time. This is perfect for monitoring locations like Times Square, tourist attractions, or any place with a live camera feed.
 
-## 🔄 Complete Workflow
+## Complete Workflow
 
 ```
 YouTube URL → yt-dlp → Video Stream URL → OpenCV → Frame Extraction → Computer Vision Analysis → Aggregated Results
 ```
 
-## 📋 Step-by-Step Process
+## Step-by-Step Process
 
 ### Step 1: User Provides YouTube URL
 ```python
@@ -207,7 +207,7 @@ max_density = max(all_crowd_densities)
 }
 ```
 
-## 🎬 Live Stream vs Regular Video
+## Live Stream vs Regular Video
 
 ### Live Streams
 - **Total frames**: 0 (infinite stream)
@@ -221,7 +221,7 @@ max_density = max(all_crowd_densities)
 - **Historical**: Analyzes past conditions
 - **Use case**: Analyzing recorded footage
 
-## 🔧 Technical Components
+## Technical Components
 
 ### 1. yt-dlp
 - **Purpose**: Extract video stream URLs from YouTube
@@ -245,7 +245,7 @@ max_density = max(all_crowd_densities)
 - **Purpose**: Convert frames to strings for analysis
 - **Process**: Frame → JPEG → Base64 → Analysis function
 
-## 📊 Example: Analyzing Times Square Live Stream
+## Example: Analyzing Times Square Live Stream
 
 ```python
 # Step 1: User calls the tool
@@ -288,7 +288,7 @@ result = analyze_youtube_video(
 # "Times Square is currently moderately busy with moderate traffic"
 ```
 
-## ⚙️ Configuration Options
+## Configuration Options
 
 ### `sample_frames` (default: 5)
 - **More frames**: More accurate but slower
@@ -300,7 +300,7 @@ result = analyze_youtube_video(
 - **Longer interval**: Less frequent sampling, faster processing
 - **Recommendation**: 10-15 seconds for most cases, 5 seconds for rapidly changing scenes
 
-## 🚀 Performance Considerations
+## Performance Considerations
 
 ### Optimization Strategies:
 1. **720p limit**: Processes up to 720p for faster analysis
@@ -313,7 +313,7 @@ result = analyze_youtube_video(
 - **10 frames, 15-second interval**: ~60-120 seconds
 - **Depends on**: Video quality, network speed, system performance
 
-## 🔍 Limitations & Future Improvements
+## Limitations & Future Improvements
 
 ### Current Limitations:
 1. **Simplified algorithms**: Uses basic CV techniques, not ML models
@@ -328,7 +328,7 @@ result = analyze_youtube_video(
 4. **Real-time monitoring**: Continuous analysis with alerts
 5. **Historical trends**: Store and compare over time
 
-## 🎯 Use Cases
+## Use Cases
 
 1. **Travel Planning**: Check current crowd levels before visiting
 2. **Route Optimization**: Avoid congested areas in real-time
@@ -337,7 +337,7 @@ result = analyze_youtube_video(
 5. **Tourist Attractions**: Check wait times and crowd levels
 6. **Safety Monitoring**: Monitor public spaces for safety
 
-## 📝 Summary
+## Summary
 
 The YouTube video analysis works by:
 1. **Extracting** video stream URL using yt-dlp

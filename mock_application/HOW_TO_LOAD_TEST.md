@@ -151,17 +151,17 @@ python run_load_tests.py --scenarios simple_trip complex_trip full_workflow
 
 ### Good Performance Indicators
 
-✅ **P95 Latency < 1000ms**: Fast responses
-✅ **Success Rate > 99%**: High reliability  
-✅ **Throughput matches target**: System handles load
-✅ **Error Rate < 1%**: Stable operation
+- **P95 Latency < 1000ms**: Fast responses
+- **Success Rate > 99%**: High reliability  
+- **Throughput matches target**: System handles load
+- **Error Rate < 1%**: Stable operation
 
 ### Warning Signs
 
-⚠️ **P95 Latency > 5000ms**: System overloaded
-⚠️ **Success Rate < 95%**: High failure rate
-⚠️ **Throughput below target**: Capacity issues
-⚠️ **Error Rate > 5%**: System instability
+- **P95 Latency > 5000ms**: System overloaded
+- **Success Rate < 95%**: High failure rate
+- **Throughput below target**: Capacity issues
+- **Error Rate > 5%**: System instability
 
 ## Example Workflow
 

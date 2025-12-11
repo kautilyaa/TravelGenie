@@ -393,7 +393,7 @@ def get_geocoded_locations() -> str:
         for loc in locations:
             content += f"## {loc['location_id']}\n"
             content += f"- **Query**: {loc['query']}\n"
-            content += f"- **Status**: {'✅ Success' if loc['success'] else '❌ Failed'}\n"
+            content += f"- **Status**: {'Success' if loc['success'] else 'Failed'}\n"
             
             if loc['success']:
                 content += f"- **Coordinates**: {loc.get('coordinates', 'N/A')}\n"
@@ -429,7 +429,7 @@ def get_location_details(location_id: str) -> str:
         content = f"# Geocoded Location: {location_id}\n\n"
         content += f"## Query Information\n"
         content += f"- **Original Query**: {data.get('query', 'N/A')}\n"
-        content += f"- **Status**: {'✅ Success' if data.get('success') else '❌ Failed'}\n"
+        content += f"- **Status**: {'Success' if data.get('success') else 'Failed'}\n"
         content += f"- **Timestamp**: {data.get('timestamp', 'N/A')}\n\n"
         
         if not data.get('success'):
