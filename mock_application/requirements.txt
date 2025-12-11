@@ -1,0 +1,13 @@
+# Mock Application Requirements
+
+# HTTP client
+requests>=2.31.0
+
+# Configuration
+pyyaml>=6.0
+
+# Performance monitoring
+psutil>=5.9.0  # Optional: for system resource monitoring
+
+# Data handling
+python-dateutil>=2.8.0

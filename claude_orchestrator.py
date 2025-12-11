@@ -1,7 +1,4 @@
-"""
-Claude API Orchestrator for Travel Assistant
-This module provides tools and functions for Claude to interact with MCP servers
-"""
+"""Claude API orchestrator for travel planning."""
 
 import os
 import json
@@ -10,7 +7,6 @@ from datetime import datetime
 import sys
 from pathlib import Path
 
-# Add server directories to Python path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "flight_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "hotel_server"))
@@ -20,8 +16,6 @@ sys.path.insert(0, str(PROJECT_ROOT / "servers" / "weather_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "finance_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "traffic_crowd_server"))
 
-
-# Import server functions
 try:
     from servers.flight_server.flight_server import search_flights, get_flight_details, filter_flights_by_price
     from servers.hotel_server.hotel_server import search_hotels, get_hotel_details, filter_hotels_by_price
@@ -35,10 +29,7 @@ except ImportError as e:
 
 
 def get_tool_definitions() -> List[Dict[str, Any]]:
-    """
-    Get tool definitions for Claude API.
-    These define what tools Claude can use to interact with the MCP servers.
-    """
+    """Returns tool definitions for Claude to interact with MCP servers."""
     return [
         {
             "name": "geocode_location",
@@ -375,10 +366,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
 
 
 def execute_tool(tool_name: str, **kwargs) -> Dict[str, Any]:
-    """
-    Execute a tool function based on the tool name and parameters.
-    This is called by Claude when it wants to use a tool.
-    """
+    """Executes a tool function by name with the given parameters."""
     try:
         if tool_name == "geocode_location":
             return geocode_location(kwargs.get("location"))
@@ -477,9 +465,7 @@ def execute_tool(tool_name: str, **kwargs) -> Dict[str, Any]:
 
 
 def get_system_prompt() -> str:
-    """
-    Get the system prompt for Claude that explains its role and capabilities.
-    """
+    """Returns the system prompt explaining Claude's role and capabilities."""
     return """You are an intelligent travel planning assistant powered by multiple specialized services. 
 You help users plan comprehensive trips by orchestrating searches across flights, hotels, events, weather, and currency conversion.
 

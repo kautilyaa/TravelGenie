@@ -1,0 +1,84 @@
+# Mock Application Configuration
+
+# Mock LLM mode (set to true to use mock LLM instead of real endpoint)
+use_mock_llm: true  # Set to false to use real Llama endpoint
+mock_llm_delay_ms: 200  # Simulated LLM response delay
+mock_llm_delay_variance: 100  # Random variance in ms
+
+# Llama endpoint configuration (used when use_mock_llm is false)
+llama_endpoint: "http://localhost:8000"  # External Llama endpoint (EC2/Colab)
+llama_timeout: 120  # seconds
+llama_max_retries: 3
+llama_retry_delay: 1  # seconds
+
+# MCP server simulation
+mcp_response_delay_ms: 50  # Simulated MCP response delay
+mcp_response_delay_variance: 20  # Random variance in ms
+enable_mcp_delays: true
+
+# Performance monitoring
+enable_network_monitoring: true
+enable_detailed_timing: true
+metrics_collection_interval: 1  # seconds
+
+# Platform-specific settings
+platform: "local"  # Options: local, aws, colab, zaratan
+platform_tag: ""  # Custom tag for this deployment (e.g., "aws-us-east-1")
+
+# AWS-specific settings
+aws:
+  region: "us-east-1"
+  cloudwatch_log_group: "travel-genie-mock"
+  enable_cloudwatch: false  # Set to true to send metrics to CloudWatch
+  instance_type: "t3.medium"
+  
+# Colab-specific settings
+colab:
+  port: 7860
+  enable_ngrok: false  # Set to true to expose via ngrok
+  ngrok_token: ""  # ngrok authtoken if using ngrok
+  
+# Zaratan-specific settings
+zaratan:
+  partition: "gpu"
+  gpus: 0
+  cpus: 8
+  memory: "32G"
+  time_limit: "24:00:00"
+  enable_slurm_metrics: true
+
+# Data paths (relative to project root)
+data_paths:
+  flights: "../flights"
+  hotels: "../hotels"
+  events: "../events"
+  geocoded_locations: "../geocoded_locations"
+  weather_data: "../weather_data"
+
+# Orchestration settings
+max_turns: 10
+max_tools_per_turn: 5
+enable_tool_parallelization: false  # Sequential execution for accurate timing
+
+# Metrics collection
+metrics:
+  enabled: true
+  collection_interval: 1  # seconds
+  save_to_file: true
+  metrics_file: "metrics.json"
+  enable_platform_comparison: true
+
+# Report generation
+reporting:
+  enabled: true
+  output_format: ["markdown", "html"]  # Options: markdown, html, both
+  output_directory: "reports"
+  generate_visualizations: true
+
+# Logging
+log_level: "INFO"
+log_file: "mock_application.log"
+
+# Results
+results_directory: "results"
+save_detailed_logs: true

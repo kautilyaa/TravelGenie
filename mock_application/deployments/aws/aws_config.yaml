@@ -1,0 +1,34 @@
+# AWS EC2 Configuration for Mock Travel Genie
+
+# Instance configuration
+instance:
+  type: "t3.medium"  # Options: t3.micro, t3.small, t3.medium, t3.large
+  ami: "ami-0c55b159cbfafe1f0"  # Amazon Linux 2023
+  region: "us-east-1"
+  key_name: ""  # Your EC2 key pair name
+  security_group: "travel-genie-sg"
+
+# Application configuration
+application:
+  port: 8501  # Streamlit default port
+  host: "0.0.0.0"  # Listen on all interfaces
+  
+# Monitoring
+monitoring:
+  enable_cloudwatch: false  # Set to true to send metrics to CloudWatch
+  cloudwatch_log_group: "travel-genie-mock"
+  cloudwatch_region: "us-east-1"
+
+# Auto-scaling (optional)
+autoscaling:
+  enabled: false
+  min_instances: 1
+  max_instances: 3
+  target_cpu_utilization: 70
+
+# Cost estimation (per hour)
+cost_estimation:
+  t3_micro: 0.0104
+  t3_small: 0.0208
+  t3_medium: 0.0416
+  t3_large: 0.0832

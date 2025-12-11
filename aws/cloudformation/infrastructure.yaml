@@ -20,25 +20,55 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Anthropic API Key for Claude
-    Default: ''
 
   SlackBotToken:
     Type: String
     NoEcho: true
     Description: Slack Bot Token
-    Default: ''
 
   SlackAppToken:
     Type: String
     NoEcho: true
     Description: Slack App Token for Socket Mode
-    Default: ''
 
   SerpApiKey:
     Type: String
     NoEcho: true
     Description: SerpAPI Key for flights, hotels, events
-    Default: ''
+    Default: '32d027365109aa1dc90ba12b38caf731ba02cdabb1adacd75080467f4ed02f53'
+  
+  ContainerCpu:
+    Type: Number
+    Default: 1024
+    Description: CPU units for ECS task (1024 = 1 vCPU)
+    AllowedValues: [256, 512, 1024, 2048, 4096]
+
+  ContainerMemory:
+    Type: Number
+    Default: 2048
+    Description: Memory for ECS task in MB
+    AllowedValues: [512, 1024, 2048, 3072, 4096, 5120, 6144, 7168, 8192]
+
+  DesiredTaskCount:
+    Type: Number
+    Default: 3
+    Description: Desired number of ECS tasks
+    MinValue: 1
+    MaxValue: 10
+
+  MinTaskCount:
+    Type: Number
+    Default: 1
+    Description: Minimum number of ECS tasks for auto-scaling
+    MinValue: 1
+    MaxValue: 5
+
+  MaxTaskCount:
+    Type: Number
+    Default: 5
+    Description: Maximum number of ECS tasks for auto-scaling
+    MinValue: 1
+    MaxValue: 20
 
 Resources:
   # ============================================
@@ -370,6 +400,26 @@ Resources:
           Value: !Sub '${ProjectName}-${Environment}-ecs-task-role'
 
   # ============================================
+  # IAM Role for Application Auto Scaling
+  # ============================================
+  AutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-ecs-autoscaling-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: application-autoscaling.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-autoscaling-role'
+
+  # ============================================
   # CloudWatch Logs
   # ============================================
   CloudWatchLogGroup:
@@ -380,6 +430,462 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-${Environment}-logs'
+
+  # ============================================
+  # CloudWatch Alarms - DynamoDB
+  # ============================================
+  # Chat Sessions Table Alarms
+  ChatSessionsThrottledReadAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-chat-sessions-throttled-reads'
+      AlarmDescription: Alert when Chat Sessions table has throttled read requests
+      MetricName: ReadThrottledEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ChatSessionsTable
+      TreatMissingData: notBreaching
+
+  ChatSessionsThrottledWriteAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-chat-sessions-throttled-writes'
+      AlarmDescription: Alert when Chat Sessions table has throttled write requests
+      MetricName: WriteThrottledEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ChatSessionsTable
+      TreatMissingData: notBreaching
+
+  ChatSessionsConsumedReadCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-chat-sessions-high-read-capacity'
+      AlarmDescription: Alert when Chat Sessions table read capacity exceeds threshold
+      MetricName: ConsumedReadCapacityUnits
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ChatSessionsTable
+      TreatMissingData: notBreaching
+
+  ChatSessionsConsumedWriteCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-chat-sessions-high-write-capacity'
+      AlarmDescription: Alert when Chat Sessions table write capacity exceeds threshold
+      MetricName: ConsumedWriteCapacityUnits
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ChatSessionsTable
+      TreatMissingData: notBreaching
+
+  # Messages Table Alarms
+  MessagesThrottledReadAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-messages-throttled-reads'
+      AlarmDescription: Alert when Messages table has throttled read requests
+      MetricName: ReadThrottledEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref MessagesTable
+      TreatMissingData: notBreaching
+
+  MessagesThrottledWriteAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-messages-throttled-writes'
+      AlarmDescription: Alert when Messages table has throttled write requests
+      MetricName: WriteThrottledEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref MessagesTable
+      TreatMissingData: notBreaching
+
+  MessagesConsumedReadCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-messages-high-read-capacity'
+      AlarmDescription: Alert when Messages table read capacity exceeds threshold
+      MetricName: ConsumedReadCapacityUnits
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 2000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref MessagesTable
+      TreatMissingData: notBreaching
+
+  MessagesConsumedWriteCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-messages-high-write-capacity'
+      AlarmDescription: Alert when Messages table write capacity exceeds threshold
+      MetricName: ConsumedWriteCapacityUnits
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 2000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref MessagesTable
+      TreatMissingData: notBreaching
+
+  # Tool Calls Table Alarms
+  ToolCallsThrottledReadAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-tool-calls-throttled-reads'
+      AlarmDescription: Alert when Tool Calls table has throttled read requests
+      MetricName: ReadThrottledEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ToolCallsTable
+      TreatMissingData: notBreaching
+
+  ToolCallsThrottledWriteAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-tool-calls-throttled-writes'
+      AlarmDescription: Alert when Tool Calls table has throttled write requests
+      MetricName: WriteThrottledEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ToolCallsTable
+      TreatMissingData: notBreaching
+
+  ToolCallsConsumedReadCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-tool-calls-high-read-capacity'
+      AlarmDescription: Alert when Tool Calls table read capacity exceeds threshold
+      MetricName: ConsumedReadCapacityUnits
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ToolCallsTable
+      TreatMissingData: notBreaching
+
+  ToolCallsConsumedWriteCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-tool-calls-high-write-capacity'
+      AlarmDescription: Alert when Tool Calls table write capacity exceeds threshold
+      MetricName: ConsumedWriteCapacityUnits
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ToolCallsTable
+      TreatMissingData: notBreaching
+
+  # ============================================
+  # CloudWatch Alarms - ECS (Linked to Auto-Scaling)
+  # ============================================
+  # Scale-Out Alarm: High CPU
+  ECSCPUUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+      - ECSServiceAutoScalingTarget
+      - ECSScaleOutPolicy
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ecs-high-cpu'
+      AlarmDescription: Alert and scale out when ECS service CPU utilization exceeds 70%
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !Ref ECSService
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref ECSScaleOutPolicy
+
+  # Scale-In Alarm: Low CPU
+  ECSCPULowUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+      - ECSServiceAutoScalingTarget
+      - ECSScaleInPolicy
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ecs-low-cpu'
+      AlarmDescription: Scale in when ECS service CPU utilization is below 30%
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 30
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !Ref ECSService
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ECSScaleInPolicy
+
+  # Scale-Out Alarm: High Memory
+  ECSMemoryUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+      - ECSServiceAutoScalingTarget
+      - ECSScaleOutPolicy
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ecs-high-memory'
+      AlarmDescription: Alert and scale out when ECS service memory utilization exceeds 75%
+      MetricName: MemoryUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !Ref ECSService
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref ECSScaleOutPolicy
+
+  # Scale-In Alarm: Low Memory
+  ECSMemoryLowUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+      - ECSServiceAutoScalingTarget
+      - ECSScaleInPolicy
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ecs-low-memory'
+      AlarmDescription: Scale in when ECS service memory utilization is below 40%
+      MetricName: MemoryUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 40
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !Ref ECSService
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ECSScaleInPolicy
+
+  ECSTaskCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ecs-low-task-count'
+      AlarmDescription: Alert when ECS service running task count is below desired count
+      MetricName: RunningTaskCount
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: !Ref DesiredTaskCount
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !Ref ECSService
+      TreatMissingData: breaching
+
+  ECSServiceStoppedTaskAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ecs-stopped-tasks'
+      AlarmDescription: Alert when ECS service has stopped tasks
+      MetricName: StoppedTaskCount
+      Namespace: AWS/ECS
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !Ref ECSService
+      TreatMissingData: notBreaching
+
+  # ============================================
+  # CloudWatch Dashboard
+  # ============================================
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${ProjectName}-${Environment}-monitoring'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/ECS", "CPUUtilization", "ClusterName", "${ECSCluster}", "ServiceName", "${ECSService}"],
+                  [".", "MemoryUtilization", ".", ".", ".", "."],
+                  [".", "RunningTaskCount", ".", ".", ".", "."],
+                  [".", "DesiredTaskCount", ".", ".", ".", "."]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "ECS Service Metrics (Auto-Scaling)",
+                "yAxis": {
+                  "left": {
+                    "min": 0
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${ChatSessionsTable}"],
+                  [".", "ConsumedWriteCapacityUnits", ".", "."],
+                  [".", "ConsumedReadCapacityUnits", "TableName", "${MessagesTable}"],
+                  [".", "ConsumedWriteCapacityUnits", ".", "."],
+                  [".", "ConsumedReadCapacityUnits", "TableName", "${ToolCallsTable}"],
+                  [".", "ConsumedWriteCapacityUnits", ".", "."]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "DynamoDB Throughput (All Tables)"
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/DynamoDB", "ReadThrottledEvents", "TableName", "${ChatSessionsTable}"],
+                  [".", "WriteThrottledEvents", ".", "."],
+                  [".", "ReadThrottledEvents", "TableName", "${MessagesTable}"],
+                  [".", "WriteThrottledEvents", ".", "."],
+                  [".", "ReadThrottledEvents", "TableName", "${ToolCallsTable}"],
+                  [".", "WriteThrottledEvents", ".", "."]
+                ],
+                "period": 60,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "DynamoDB Throttling Events"
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/DynamoDB", "UserErrors", "TableName", "${ChatSessionsTable}"],
+                  [".", "SystemErrors", ".", "."],
+                  [".", "UserErrors", "TableName", "${MessagesTable}"],
+                  [".", "SystemErrors", ".", "."],
+                  [".", "UserErrors", "TableName", "${ToolCallsTable}"],
+                  [".", "SystemErrors", ".", "."]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "DynamoDB Errors"
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/ECS", "StoppedTaskCount", "ClusterName", "${ECSCluster}", "ServiceName", "${ECSService}"]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "ECS Stopped Tasks"
+              }
+            },
+            {
+              "type": "log",
+              "properties": {
+                "query": "SOURCE '/ecs/${ProjectName}-${Environment}'\n| fields @timestamp, @message\n| filter @message like /ERROR/ or @message like /Exception/ or @message like /Error/\n| sort @timestamp desc\n| limit 100",
+                "region": "${AWS::Region}",
+                "title": "Recent Errors from Logs",
+                "view": "table"
+              }
+            }
+          ]
+        }
 
   # ============================================
   # ECS Cluster
@@ -411,8 +917,8 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      Cpu: 512
-      Memory: 1024
+      Cpu: !Ref ContainerCpu
+      Memory: !Ref ContainerMemory
       ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
@@ -444,13 +950,13 @@ Resources:
               Value: claude-3-7-sonnet-20250219
           Secrets:
             - Name: ANTHROPIC_API_KEY
-              ValueFrom: !Ref AnthropicApiKeySecret
+              ValueFrom: !Sub '${AnthropicApiKeySecret}:SecretString::'
             - Name: SLACK_BOT_TOKEN
-              ValueFrom: !Ref SlackBotTokenSecret
+              ValueFrom: !Sub '${SlackBotTokenSecret}:SecretString::'
             - Name: SLACK_APP_TOKEN
-              ValueFrom: !Ref SlackAppTokenSecret
+              ValueFrom: !Sub '${SlackAppTokenSecret}:SecretString::'
             - Name: SERPAPI_KEY
-              ValueFrom: !Ref SerpApiKeySecret
+              ValueFrom: !Sub '${SerpApiKeySecret}:SecretString::'
 
   # ============================================
   # ECS Service
@@ -464,7 +970,7 @@ Resources:
       ServiceName: !Sub '${ProjectName}-${Environment}-service'
       Cluster: !Ref ECSCluster
       TaskDefinition: !Ref ECSTaskDefinition
-      DesiredCount: 1
+      DesiredCount: !Ref DesiredTaskCount
       LaunchType: FARGATE
       NetworkConfiguration:
         AwsvpcConfiguration:
@@ -477,6 +983,65 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-${Environment}-service'
+
+  # ============================================
+  # ECS Auto Scaling Target
+  # ============================================
+  ECSServiceAutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn:
+      - ECSService
+      - AutoScalingRole
+    Properties:
+      MaxCapacity: !Ref MaxTaskCount
+      MinCapacity: !Ref MinTaskCount
+      ResourceId: !Sub 'service/${ECSCluster}/${ProjectName}-${Environment}-service'
+      RoleARN: !GetAtt AutoScalingRole.Arn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  # ============================================
+  # ECS Auto Scaling Policies
+  # ============================================
+  # Scale-Out Policy: Add tasks when CPU/Memory is high
+  ECSScaleOutPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    DependsOn:
+      - ECSServiceAutoScalingTarget
+    Properties:
+      PolicyName: !Sub '${ProjectName}-${Environment}-scale-out'
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ECSServiceAutoScalingTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 60
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            MetricIntervalUpperBound: 10
+            ScalingAdjustment: 1
+          - MetricIntervalLowerBound: 10
+            MetricIntervalUpperBound: 30
+            ScalingAdjustment: 2
+          - MetricIntervalLowerBound: 30
+            ScalingAdjustment: 3
+
+  # Scale-In Policy: Remove tasks when CPU/Memory is low
+  ECSScaleInPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    DependsOn:
+      - ECSServiceAutoScalingTarget
+    Properties:
+      PolicyName: !Sub '${ProjectName}-${Environment}-scale-in'
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ECSServiceAutoScalingTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 300
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalUpperBound: 0
+            ScalingAdjustment: -1
 
 Outputs:
   VPCId:
@@ -514,3 +1079,19 @@ Outputs:
   CloudWatchLogGroupName:
     Description: CloudWatch Log Group Name
     Value: !Ref CloudWatchLogGroup
+
+  AutoScalingTargetId:
+    Description: ECS Auto Scaling Target ID
+    Value: !Ref ECSServiceAutoScalingTarget
+
+  AutoScalingMinCapacity:
+    Description: Minimum ECS Task Count
+    Value: !Ref MinTaskCount
+
+  AutoScalingMaxCapacity:
+    Description: Maximum ECS Task Count
+    Value: !Ref MaxTaskCount
+
+  MonitoringDashboardURL:
+    Description: CloudWatch Dashboard URL
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${MonitoringDashboard}'

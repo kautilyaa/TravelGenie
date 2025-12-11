@@ -1,0 +1,57 @@
+# Load Test Configuration
+
+# Concurrent users test
+concurrent_users:
+  enabled: true
+  users: [1, 5, 10, 20, 50, 100]
+  duration_seconds: 60
+  ramp_up_seconds: 10
+  ramp_down_seconds: 10
+  think_time_min: 1.0  # seconds between requests
+  think_time_max: 3.0  # seconds between requests
+
+# Sustained load test
+sustained_load:
+  enabled: true
+  rps: 10  # requests per second
+  duration_seconds: 300  # 5 minutes
+  ramp_up_seconds: 30
+  ramp_down_seconds: 30
+
+# Stress test
+stress_test:
+  enabled: true
+  start_rps: 1
+  max_rps: 100
+  ramp_up_seconds: 60
+  hold_seconds: 120
+  ramp_down_seconds: 30
+  step_size: 5  # RPS increase per step
+
+# Spike test
+spike_test:
+  enabled: true
+  baseline_rps: 5
+  spike_rps: 50
+  spike_duration_seconds: 30
+  baseline_duration_seconds: 60
+  spikes: 3
+
+# Test scenarios to use
+scenarios:
+  - simple_trip
+  - complex_trip
+  - budget_planning
+
+# Performance thresholds
+thresholds:
+  max_latency_p95_ms: 5000  # 5 seconds
+  max_error_rate: 0.05  # 5%
+  min_throughput_rps: 1
+
+# Reporting
+reporting:
+  real_time_dashboard: true
+  save_metrics: true
+  generate_html_report: true
+  generate_csv_export: true
