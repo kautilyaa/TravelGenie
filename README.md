@@ -2,7 +2,7 @@
 
 ![TravelGenie](assets/img/Gemini_Generated_Image_36apt236apt236ap.png)
 
-**TravelGenie** is an AI-powered travel planner that coordinates flights, hotels, events, weather, and more into complete itineraries. Built on Model Context Protocol (MCP), it uses Claude AI to orchestrate 7 specialized servers automatically.
+**TravelGenie** is an AI-powered travel planner that helps you coordinate flights, hotels, events, weather, and basically everything else you need for a complete trip itinerary. It's built on Model Context Protocol (MCP) and uses Claude AI to orchestrate 7 specialized servers automatically - so you don't have to juggle a million tabs and apps.
 
 ![MCP](https://img.shields.io/badge/MCP-Compatible-blue)
 ![Python](https://img.shields.io/badge/Python-3.12+-green)
@@ -12,23 +12,27 @@
 
 ## What It Does
 
-Ask: *"Plan a trip to Banff, Alberta from Reston, Virginia, June 7-14, 2025. Budget $5000. We like hiking, museums, and dining."*
+Ever tried planning a trip and spent hours jumping between Google Flights, Booking.com, checking weather, looking up events, and trying to figure out if you can afford it all? Yeah, me too. That's why I built TravelGenie.
 
-TravelGenie automatically:
-- Finds flights and hotels
-- Checks weather forecasts
-- Discovers local events matching your interests
-- Converts currencies
-- Analyzes traffic patterns
-- Creates a day-by-day itinerary with budget breakdown
+Just ask it something like: *"Plan a trip to Banff, Alberta from Reston, Virginia, June 7-14, 2025. Budget $5000. We like hiking, museums, and dining."*
 
-**No manual searching. Just one request, complete plan.**
+And TravelGenie will:
+- Find flights and hotels that fit your budget
+- Check weather forecasts (because who wants to pack wrong?)
+- Discover local events that match what you're into
+- Convert currencies so you know what things actually cost
+- Analyze traffic patterns (because nobody likes being stuck)
+- Create a day-by-day itinerary with a budget breakdown
+
+**No manual searching. Just one request, and you get a complete plan.**
 
 ---
 
 ## Quick Start
 
-### 1. Install
+### Installation
+
+First things first, clone the repo and install dependencies:
 
 ```bash
 git clone <repository-url>
@@ -36,58 +40,66 @@ cd TravelGenie
 pip install -r requirements.txt
 ```
 
-### 2. Get API Keys
+### API Keys
 
-- **SerpAPI** (flights, hotels, events) - [Free key](https://serpapi.com/)
-- **Anthropic** (Claude AI) - [Get key](https://console.anthropic.com/)
-- **Slack** (optional, for bot) - [Create app](https://api.slack.com/apps)
-- **Open-Meteo** & **OpenStreetMap** - Free, no keys needed
+You'll need a few API keys to get this running:
 
-### 3. Configure
+- **SerpAPI** - Used for flights, hotels, and events. You can get a free key at [serpapi.com](https://serpapi.com/)
+- **Anthropic** - For Claude AI. Sign up at [console.anthropic.com](https://console.anthropic.com/)
+- **Slack** (optional) - Only if you want to use the Slack bot. Create an app at [api.slack.com/apps](https://api.slack.com/apps)
+- **Open-Meteo** & **OpenStreetMap** - These are free, no keys needed!
+
+### Configuration
+
+Copy the example env file and add your keys:
 
 ```bash
 cp .env.example .env
-# Edit .env and add your keys
+# Then edit .env and add your keys
 ```
 
-### 4. Run
+### Running It
 
+You've got a couple options:
+
+**Web UI (easiest way to start):**
 ```bash
-# Web UI
 streamlit run streamlit_app.py
+```
 
-# Or Slack bot
+**Or use the Slack bot:**
+```bash
 python slack_bot.py
 ```
 
-Visit `http://localhost:8501` to start planning!
+Then just visit `http://localhost:8501` and start planning!
 
 ---
 
 ## How It Works
 
-TravelGenie uses **7 specialized servers** that Claude AI coordinates automatically:
+So here's the deal - TravelGenie uses **7 specialized servers** that Claude AI coordinates automatically. Each one handles a specific part of travel planning:
 
-| Server | Purpose |
-|--------|---------|
-| **Flight** | Find and compare flights |
-| **Hotel** | Discover accommodations |
-| **Event** | Find local activities & events |
-| **Geocoder** | Convert addresses to coordinates |
-| **Weather** | Get forecasts and conditions |
-| **Finance** | Convert currencies |
-| **Traffic & Crowd** | Analyze real-time location data |
+| Server | What It Does |
+|--------|-------------|
+| **Flight** | Finds and compares flights |
+| **Hotel** | Discovers accommodations |
+| **Event** | Finds local activities & events |
+| **Geocoder** | Converts addresses to coordinates |
+| **Weather** | Gets forecasts and conditions |
+| **Finance** | Converts currencies |
+| **Traffic & Crowd** | Analyzes real-time location data |
 
-**Example Flow:**
-1. You request a trip
-2. Claude geocodes locations
+**Here's how it flows:**
+1. You make a request for a trip
+2. Claude geocodes your locations
 3. Searches flights, hotels, events
 4. Checks weather forecasts
 5. Analyzes traffic patterns
 6. Converts currencies
 7. Synthesizes everything into a complete itinerary
 
-All automatically, in seconds.
+All automatically, usually in seconds. Pretty neat, right?
 
 ---
 
@@ -95,24 +107,30 @@ All automatically, in seconds.
 
 ### Streamlit Web UI
 
+This is probably the easiest way to use TravelGenie:
+
 1. Run `streamlit run streamlit_app.py`
-2. Fill in trip details (origin, destination, dates, budget, interests)
+2. Fill in your trip details (origin, destination, dates, budget, interests)
 3. Click "Plan My Trip"
 4. Get your complete itinerary!
 
 ### Slack Bot
 
+If you're already using Slack, you can integrate TravelGenie as a bot:
+
 ```bash
 python slack_bot.py
 ```
 
-Then in Slack:
+Then in Slack, just mention it:
 ```
 @travelgenie Plan a weekend trip to Portland for next weekend. 
 We want breweries and food trucks. Budget $1500 for 2 people.
 ```
 
 ### Direct API
+
+If you want to integrate it into your own code, you can use the orchestrator directly:
 
 ```python
 from claude_orchestrator import execute_tool
@@ -139,12 +157,16 @@ weather = execute_tool("get_weather_forecast",
 
 ### Docker
 
+If you want to run it in Docker:
+
 ```bash
 docker build -t travelgenie .
 docker run -d -p 8501:8501 --env-file .env travelgenie
 ```
 
 ### AWS
+
+For production deployments, there's CloudFormation setup:
 
 ```bash
 cd aws/cloudformation
@@ -155,18 +177,18 @@ aws cloudformation create-stack \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
-Includes: ECS Fargate, DynamoDB, Secrets Manager, CloudWatch. See `aws/Run.md` for details.
+This sets up ECS Fargate, DynamoDB, Secrets Manager, and CloudWatch. Check out `aws/Run.md` for more details on the AWS setup.
 
 ---
 
 ## Server Tools
 
-Each server provides specific tools:
+Each server provides specific tools you can use:
 
 **Flight Server**
 - `search_flights` - Find flights with filters
-- `get_flight_details` - Detailed flight info
-- `filter_flights_by_price` - Budget filtering
+- `get_flight_details` - Get detailed flight info
+- `filter_flights_by_price` - Filter by your budget
 
 **Hotel Server**
 - `search_hotels` - Find accommodations
@@ -176,11 +198,11 @@ Each server provides specific tools:
 **Event Server**
 - `search_events` - Find local events
 - `get_event_details` - Event information
-- `filter_events_by_date` - Date filtering
+- `filter_events_by_date` - Filter by date
 
 **Geocoder Server**
-- `geocode_location` - Address → coordinates
-- `reverse_geocode` - Coordinates → address
+- `geocode_location` - Convert address → coordinates
+- `reverse_geocode` - Convert coordinates → address
 - `calculate_distance` - Distance between locations
 
 **Weather Server**
@@ -202,7 +224,7 @@ Each server provides specific tools:
 
 ### Environment Variables
 
-Create `.env` file:
+Create a `.env` file in the root directory:
 
 ```bash
 # Required
@@ -216,7 +238,7 @@ SLACK_APP_TOKEN=xapp-your-token
 
 ### Claude Desktop (MCP Mode)
 
-Add to `claude_desktop_config.json`:
+If you want to use TravelGenie with Claude Desktop, add this to your `claude_desktop_config.json`:
 
 ```json
 {
@@ -239,9 +261,9 @@ Add to `claude_desktop_config.json`:
 ## Troubleshooting
 
 **Servers not responding?**
-- Check API keys in `.env`
-- Verify Python 3.12.1+
-- Check server logs
+- Double-check your API keys in `.env`
+- Make sure you're using Python 3.12.1 or higher
+- Check the server logs for errors
 
 **Import errors?**
 ```bash
@@ -249,18 +271,20 @@ pip install -r requirements.txt --upgrade
 ```
 
 **Slack bot not connecting?**
-- Verify tokens are correct
-- Enable Socket Mode in Slack app settings
-- Check bot scopes: `chat:write`, `app_mentions:read`
+- Verify your tokens are correct
+- Make sure Socket Mode is enabled in your Slack app settings
+- Check that your bot has the right scopes: `chat:write`, `app_mentions:read`
 
 **No search results?**
-- Try airport codes (e.g., "IAD" instead of city names)
-- Check SerpAPI quota
-- Verify dates are in the future
+- Try using airport codes (like "IAD" instead of city names) - sometimes that works better
+- Check if you've hit your SerpAPI quota
+- Make sure your dates are in the future
 
 ---
 
 ## Testing
+
+To test things out:
 
 ```bash
 # Test Slack bot
@@ -274,24 +298,25 @@ streamlit run streamlit_app.py
 
 ## Contributing
 
-We welcome contributions! Areas for improvement:
-- New server types (restaurants, car rentals)
-- Enhanced filtering algorithms
-- Better caching and performance
+Contributions are welcome! There's always room for improvement. Some ideas:
+- New server types (restaurants, car rentals, etc.)
+- Better filtering algorithms
+- Improved caching and performance
 - Mobile support
 - More tests
 
-**Process:**
+**How to contribute:**
 1. Fork the repo
-2. Create feature branch
-3. Make changes
-4. Submit pull request
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ---
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/kautilyaa/TravelGenie/issues)
+If you run into issues:
+- **GitHub Issues**: [github.com/kautilyaa/TravelGenie/issues](https://github.com/kautilyaa/TravelGenie/issues)
 - **API Docs**: 
   - [SerpAPI](https://serpapi.com/)
   - [Anthropic](https://docs.anthropic.com/)
@@ -305,4 +330,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**Ready to plan your next trip?** Start with `streamlit run streamlit_app.py` or integrate the Slack bot!
+**Ready to plan your next trip?** Just run `streamlit run streamlit_app.py` or set up the Slack bot and you're good to go!

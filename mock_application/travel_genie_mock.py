@@ -20,7 +20,6 @@ from metrics.platform_comparison import get_metrics_collector
 # Page configuration
 st.set_page_config(
     page_title="Mock Travel Genie",
-    page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -37,13 +36,13 @@ if 'orchestrator' not in st.session_state:
     st.session_state.metrics_history = []
 
 # Title
-st.title("🌍 Mock Travel Genie")
+st.title("Mock Travel Genie")
 st.markdown("**Fully mocked travel planning assistant - No API keys required!**")
-st.info("ℹ️ This is a demonstration version using mock data. All responses are simulated.")
+st.info("This is a demonstration version using mock data. All responses are simulated.")
 
 # Sidebar
 with st.sidebar:
-    st.header("⚙️ Configuration")
+    st.header("Configuration")
     
     # Platform info
     st.subheader("Platform Information")
@@ -54,7 +53,7 @@ with st.sidebar:
     st.divider()
     
     # Metrics
-    st.subheader("📊 Metrics")
+    st.subheader("Metrics")
     metrics = st.session_state.orchestrator.get_metrics()
     
     if metrics.get("request_metrics"):
@@ -76,7 +75,7 @@ with st.sidebar:
         )
 
 # Main interface
-tab1, tab2, tab3 = st.tabs(["💬 Chat", "📊 Metrics", "📋 History"])
+tab1, tab2, tab3 = st.tabs(["Chat", "Metrics", "History"])
 
 with tab1:
     st.header("Plan Your Trip")

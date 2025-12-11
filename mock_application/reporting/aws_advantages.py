@@ -184,54 +184,54 @@ def get_comparison_table() -> Dict[str, Dict[str, str]]:
     """Get comparison table of features across platforms"""
     return {
         "Feature": {
-            "AWS": "✅",
-            "Colab": "❌",
-            "Zaratan": "❌"
+            "AWS": "Yes",
+            "Colab": "No",
+            "Zaratan": "No"
         },
         "Auto-Scaling": {
-            "AWS": "✅ Yes",
-            "Colab": "❌ No",
-            "Zaratan": "❌ No"
+            "AWS": "Yes",
+            "Colab": "No",
+            "Zaratan": "No"
         },
         "Monitoring": {
-            "AWS": "✅ CloudWatch",
-            "Colab": "⚠️ Basic",
-            "Zaratan": "⚠️ SLURM only"
+            "AWS": "CloudWatch",
+            "Colab": "Basic",
+            "Zaratan": "SLURM only"
         },
         "High Availability": {
-            "AWS": "✅ Multi-AZ",
-            "Colab": "❌ Single instance",
-            "Zaratan": "❌ Single job"
+            "AWS": "Multi-AZ",
+            "Colab": "Single instance",
+            "Zaratan": "Single job"
         },
         "Persistent Storage": {
-            "AWS": "✅ EBS/EFS",
-            "Colab": "❌ Ephemeral",
-            "Zaratan": "⚠️ Limited"
+            "AWS": "EBS/EFS",
+            "Colab": "Ephemeral",
+            "Zaratan": "Limited"
         },
         "Load Balancing": {
-            "AWS": "✅ ALB/NLB",
-            "Colab": "❌ No",
-            "Zaratan": "❌ No"
+            "AWS": "ALB/NLB",
+            "Colab": "No",
+            "Zaratan": "No"
         },
         "Enterprise Support": {
-            "AWS": "✅ 24/7 SLA",
-            "Colab": "❌ Community",
-            "Zaratan": "❌ Academic"
+            "AWS": "24/7 SLA",
+            "Colab": "Community",
+            "Zaratan": "Academic"
         },
         "Security": {
-            "AWS": "✅ IAM/VPC",
-            "Colab": "⚠️ Basic",
-            "Zaratan": "⚠️ Basic"
+            "AWS": "IAM/VPC",
+            "Colab": "Basic",
+            "Zaratan": "Basic"
         },
         "Cost Predictability": {
-            "AWS": "✅ Transparent",
-            "Colab": "✅ Free (limited)",
-            "Zaratan": "✅ Free (academic)"
+            "AWS": "Transparent",
+            "Colab": "Free (limited)",
+            "Zaratan": "Free (academic)"
         },
         "Production Ready": {
-            "AWS": "✅ Yes",
-            "Colab": "❌ No",
-            "Zaratan": "❌ No"
+            "AWS": "Yes",
+            "Colab": "No",
+            "Zaratan": "No"
         }
     }
 

@@ -189,7 +189,6 @@ When presenting travel information, use this format:
 
 **Response Style:**
 - Keep responses concise but informative - Slack users prefer scannable information
-- Use emojis sparingly and appropriately (🌍 travel, ✈️ flights, 🏨 hotels, 🌤️ weather, 💰 budget, etc.)
 - Break up long responses into readable sections with clear headers
 - Use blank lines between major sections
 - When presenting multiple options, highlight the top 2-3 recommendations prominently
@@ -209,7 +208,6 @@ When presenting travel information, use this format:
 - If something goes wrong, provide a clear, helpful error message
 - Suggest alternatives when a specific request cannot be fulfilled
 - Always be helpful and solution-oriented
-- Use ❌ for errors, ⚠️ for warnings, ✅ for success
 
 **Important:**
 - NEVER use markdown that doesn't work in Slack (like # headers, complex tables, or HTML)
@@ -623,9 +621,9 @@ class SlackTravelBot:
 
             except Exception as e:
                 logger.error(f"Error processing query: {e}", exc_info=True)
-                return f"❌ Error: {str(e)}"
+                return f"Error: {str(e)}"
 
-        return "⚠️ Conversation exceeded maximum turns. Please try a simpler query."
+        return "Conversation exceeded maximum turns. Please try a simpler query."
 
     async def handle_slack_event(self, client: SocketModeClient, req: SocketModeRequest):
         """Handle incoming Slack events"""
@@ -661,7 +659,7 @@ class SlackTravelBot:
             await self.safe_post_message(
                 channel=channel_id,
                 thread_ts=thread_ts,
-                text="🌍 Hi! I'm your Travel Assistant. I can help you:\n"
+                text="Hi! I'm your Travel Assistant. I can help you:\n"
                      "• Find flights and hotels\n"
                      "• Discover events and activities\n"
                      "• Check weather forecasts\n"
@@ -699,7 +697,7 @@ class SlackTravelBot:
             await self.safe_post_message(
                 channel=channel_id,
                 thread_ts=thread_ts,
-                text=f"❌ Sorry, I encountered an error: {str(e)}"
+                text=f"Sorry, I encountered an error: {str(e)}"
             )
 
     async def handle_message(self, event: Dict):
@@ -745,7 +743,7 @@ class SlackTravelBot:
             await self.safe_post_message(
                 channel=channel_id,
                 thread_ts=thread_ts or ts,
-                text=f"❌ Sorry, I encountered an error: {str(e)}"
+                text=f"Sorry, I encountered an error: {str(e)}"
             )
 
     async def get_bot_id(self) -> str:
@@ -763,7 +761,7 @@ class SlackTravelBot:
         await self.socket_client.connect()
 
         logger.info("=" * 60)
-        logger.info("🌍 Travel Assistant Slack Bot Started!")
+        logger.info("Travel Assistant Slack Bot Started!")
         logger.info("=" * 60)
         logger.info("The bot will respond to:")
         logger.info("  • Direct messages")
@@ -798,38 +796,38 @@ async def main():
                     max_tokens=10,
                     messages=[{"role": "user", "content": "test"}]
                 )
-                logger.info("✅ Successfully connected to Anthropic API!")
+                logger.info("Successfully connected to Anthropic API!")
             except Exception as e:
-                logger.error(f"❌ Anthropic connection failed: {e}")
+                logger.error(f"Anthropic connection failed: {e}")
                 return
 
             # Test Slack connection
             try:
                 bot_info = await client.slack_client.auth_test()
-                logger.info(f"✅ Successfully connected to Slack as {bot_info['user']}")
+                logger.info(f"Successfully connected to Slack as {bot_info['user']}")
             except Exception as e:
-                logger.error(f"❌ Slack connection failed: {e}")
+                logger.error(f"Slack connection failed: {e}")
                 return
 
             # Test database
             try:
                 test_session = client.db.create_session_id("test", "test", "test")
                 client.db.save_message(test_session, "user", "Test message")
-                logger.info("✅ Database initialized successfully")
+                logger.info("Database initialized successfully")
             except Exception as e:
-                logger.error(f"❌ Database test failed: {e}")
+                logger.error(f"Database test failed: {e}")
                 return
 
             # Test tool definitions
             try:
                 tools = get_tool_definitions()
-                logger.info(f"✅ Loaded {len(tools)} tool definitions")
+                logger.info(f"Loaded {len(tools)} tool definitions")
             except Exception as e:
-                logger.error(f"❌ Tool definitions failed: {e}")
+                logger.error(f"Tool definitions failed: {e}")
                 return
 
             logger.info("\n" + "=" * 60)
-            logger.info("✅ All systems operational!")
+            logger.info("All systems operational!")
             logger.info("Run without --test to start the bot.")
             logger.info("=" * 60)
 
