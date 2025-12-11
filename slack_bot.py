@@ -23,7 +23,6 @@ from slack_sdk.socket_mode.aiohttp import SocketModeClient
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 
-# AWS imports (optional - only needed in AWS environment)
 try:
     import boto3
     from botocore.exceptions import ClientError
@@ -31,7 +30,6 @@ try:
 except ImportError:
     AWS_AVAILABLE = False
 
-# Add server directories to Python path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "flight_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "hotel_server"))
@@ -41,21 +39,16 @@ sys.path.insert(0, str(PROJECT_ROOT / "servers" / "weather_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "finance_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "traffic_crowd_server"))
 
-# Import orchestrator functions
 try:
     from claude_orchestrator import get_tool_definitions, execute_tool, get_system_prompt
 except ImportError as e:
     print(f"Error importing orchestrator: {e}")
     sys.exit(1)
 
-# Load environment variables (for local development)
-# In AWS, secrets are loaded from Secrets Manager
 load_dotenv()
 
-# Check if running in AWS (ECS/Lambda)
 IS_AWS_ENV = os.getenv('AWS_EXECUTION_ENV') is not None or os.getenv('ECS_CONTAINER_METADATA_URI') is not None
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -68,36 +61,25 @@ logger = logging.getLogger("Slack-Travel-Bot")
 
 
 class SlackConnectionErrorFilter(logging.Filter):
-    """
-    Filter to downgrade expected Slack SDK connection errors to warnings.
-    These errors occur when WebSocket connections are reset/reconnected,
-    which is normal behavior for long-running connections.
-    """
+    """Filter to downgrade expected Slack SDK connection errors to warnings."""
     def filter(self, record):
-        # Check if this is a connection-related error from Slack SDK
         if record.levelno == logging.ERROR:
             error_msg = str(record.getMessage()).lower()
-            # These are expected connection errors that are automatically handled
             if any(keyword in error_msg for keyword in [
                 'enqueue', 'connection', 'transport', 'closing', 
                 'reset', 'stale', 'disconnected', 'clientconnection'
             ]):
-                # Downgrade to WARNING since these are handled automatically
                 record.levelno = logging.WARNING
                 record.levelname = 'WARNING'
         return True
 
 
-# Configure Slack SDK logging to reduce noise from expected connection errors
 slack_logger = logging.getLogger("slack_sdk")
 slack_logger.addFilter(SlackConnectionErrorFilter())
 
 
 def retry_slack_operation(max_retries: int = 3, delay: float = 1.0):
-    """
-    Decorator to retry Slack API operations on connection errors.
-    Handles common Slack SDK connection errors gracefully.
-    """
+    """Decorator to retry Slack API operations on connection errors."""
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -107,14 +89,13 @@ def retry_slack_operation(max_retries: int = 3, delay: float = 1.0):
                     return await func(*args, **kwargs)
                 except Exception as e:
                     error_str = str(e).lower()
-                    # Check if it's a connection-related error
                     if any(keyword in error_str for keyword in [
                         'connection', 'transport', 'closed', 'reset', 
                         'stale', 'disconnected', 'enqueue'
                     ]):
                         last_exception = e
                         if attempt < max_retries - 1:
-                            wait_time = delay * (2 ** attempt)  # Exponential backoff
+                            wait_time = delay * (2 ** attempt)
                             logger.warning(
                                 f"Slack connection error (attempt {attempt + 1}/{max_retries}): {e}. "
                                 f"Retrying in {wait_time}s..."
@@ -124,9 +105,7 @@ def retry_slack_operation(max_retries: int = 3, delay: float = 1.0):
                         else:
                             logger.error(f"Slack operation failed after {max_retries} attempts: {e}")
                     else:
-                        # Not a connection error, re-raise immediately
                         raise
-            # If we exhausted retries, raise the last exception
             if last_exception:
                 raise last_exception
         return wrapper
@@ -134,10 +113,7 @@ def retry_slack_operation(max_retries: int = 3, delay: float = 1.0):
 
 
 def get_slack_system_prompt() -> str:
-    """
-    Get the base system prompt for the Slack Travel Assistant Bot.
-    This includes Slack-specific instructions along with travel assistant capabilities.
-    """
+    """Get the base system prompt for the Slack Travel Assistant Bot."""
     base_prompt = get_system_prompt()
     
     slack_instructions = """
@@ -229,10 +205,8 @@ def get_secret_from_aws(secret_name: str) -> Optional[str]:
         response = client.get_secret_value(SecretId=secret_name)
         secret_string = response.get('SecretString', '')
         
-        # Try to parse as JSON (for structured secrets)
         try:
             secret_dict = json.loads(secret_string)
-            # If it's a dict, try to get the key matching the secret name
             key = secret_name.split('/')[-1].upper().replace('-', '_')
             return secret_dict.get(key) or secret_dict.get(key.replace('_KEY', '')) or secret_string
         except:
@@ -244,12 +218,10 @@ def get_secret_from_aws(secret_name: str) -> Optional[str]:
 
 def get_env_or_secret(env_var: str, secret_name: str) -> Optional[str]:
     """Get value from environment variable or AWS Secrets Manager"""
-    # First try environment variable
     value = os.getenv(env_var)
     if value:
         return value
     
-    # If in AWS and secret name provided, try Secrets Manager
     if IS_AWS_ENV and secret_name:
         value = get_secret_from_aws(secret_name)
         if value:
@@ -278,14 +250,13 @@ class ChatDatabase:
             self.init_database()
 
     def init_database(self):
-        """Initialize SQLite database schema (only used in local development)"""
+        """Initialize SQLite database schema"""
         if self.use_dynamodb:
             return
             
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
-            # Chat sessions table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS chat_sessions (
                     session_id TEXT PRIMARY KEY,
@@ -297,7 +268,6 @@ class ChatDatabase:
                 )
             ''')
 
-            # Messages table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS messages (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -310,7 +280,6 @@ class ChatDatabase:
                 )
             ''')
 
-            # Tool calls table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS tool_calls (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -404,7 +373,6 @@ class SlackTravelBot:
         self.model = model
         self.db = ChatDatabase()
 
-        # Initialize Anthropic
         project_name = os.getenv("PROJECT_NAME", "travel-assistant-slack-bot")
         environment = os.getenv("ENVIRONMENT", "production")
         
@@ -416,7 +384,6 @@ class SlackTravelBot:
             raise ValueError("ANTHROPIC_API_KEY not found in environment or AWS Secrets Manager")
         self.claude = Anthropic(api_key=api_key)
 
-        # Initialize Slack clients
         self.slack_token = get_env_or_secret(
             "SLACK_BOT_TOKEN",
             f"{project_name}/{environment}/slack-bot-token"
@@ -435,7 +402,6 @@ class SlackTravelBot:
             web_client=self.slack_client
         )
 
-        # Get tool definitions from orchestrator
         self.tools = get_tool_definitions()
         self.system_prompt = get_slack_system_prompt()
 
@@ -460,24 +426,18 @@ class SlackTravelBot:
             raise
 
     async def safe_add_reaction(self, channel: str, timestamp: str, name: str):
-        """
-        Safely add a reaction to a Slack message with retry logic.
-        """
+        """Safely add a reaction to a Slack message with retry logic."""
         try:
             return await self.safe_slack_call('reactions_add', channel=channel, timestamp=timestamp, name=name)
         except Exception as e:
-            # Reactions are non-critical, log but don't fail
             logger.debug(f"Could not add reaction (non-critical): {e}")
             return None
 
     async def safe_remove_reaction(self, channel: str, timestamp: str, name: str):
-        """
-        Safely remove a reaction from a Slack message with retry logic.
-        """
+        """Safely remove a reaction from a Slack message with retry logic."""
         try:
             return await self.safe_slack_call('reactions_remove', channel=channel, timestamp=timestamp, name=name)
         except Exception as e:
-            # Reactions are non-critical, log but don't fail
             logger.debug(f"Could not remove reaction (non-critical): {e}")
             return None
 
@@ -503,31 +463,21 @@ class SlackTravelBot:
     async def process_with_context(self, query: str, session_id: str,
                                   channel_id: str, user_id: str) -> str:
         """Process query with conversation context"""
-
-        # Save user message
         self.db.save_message(session_id, "user", query)
-
-        # Get conversation history for context
         history = self.db.get_session_history(session_id, limit=5)
 
-        # Build messages with history
         messages: List[Dict[str, Any]] = []
 
-        # Add historical context if available
-        for msg in history[:-1]:  # Exclude the current message we just saved
+        for msg in history[:-1]:
             content = [{"type": "text", "text": msg["content"]}]
             messages.append({"role": msg["role"], "content": content})
 
-        # Add current query
         messages.append({"role": "user", "content": [{"type": "text", "text": query}]})
-
-        # Get tools in Anthropic format
         tools = self._anthropic_tools_from_definitions()
 
         MAX_TURNS = 10
         for turn in range(MAX_TURNS):
             try:
-                # Call Claude with tools
                 response = self.claude.messages.create(
                     model=self.model,
                     system=self.system_prompt,
@@ -541,12 +491,10 @@ class SlackTravelBot:
                 assistant_content = response.content
                 tool_uses = [b for b in assistant_content if hasattr(b, 'type') and b.type == "tool_use"]
 
-                # Limit tool usage to 5 tools at a time
                 MAX_TOOLS_PER_TURN = 5
                 tools_to_execute = tool_uses[:MAX_TOOLS_PER_TURN]
                 remaining_tools = tool_uses[MAX_TOOLS_PER_TURN:]
 
-                # Convert content to dict format - only include tools we're executing this turn
                 assistant_content_dicts = []
                 for block in assistant_content:
                     if hasattr(block, 'type'):
@@ -556,7 +504,6 @@ class SlackTravelBot:
                                 "text": block.text
                             })
                         elif block.type == "tool_use":
-                            # Only include tools we're executing this turn
                             if block in tools_to_execute:
                                 assistant_content_dicts.append({
                                     "type": "tool_use",
@@ -568,7 +515,6 @@ class SlackTravelBot:
                 messages.append({"role": "assistant", "content": assistant_content_dicts})
 
                 if tools_to_execute:
-                    # Execute tool calls (limited to MAX_TOOLS_PER_TURN)
                     tool_results_blocks: List[Dict[str, Any]] = []
 
                     if len(tool_uses) > MAX_TOOLS_PER_TURN:
@@ -582,16 +528,13 @@ class SlackTravelBot:
                         logger.info(f"Executing tool '{tool_name}' with params: {tool_input}")
 
                         try:
-                            # Execute tool using orchestrator
                             result = execute_tool(tool_name, **tool_input)
 
-                            # Convert result to string
                             if isinstance(result, dict):
                                 result_text = json.dumps(result, default=str, indent=2)[:10000]
                             else:
                                 result_text = str(result)[:10000]
 
-                            # Save tool call to database
                             self.db.save_tool_call(session_id, tool_name, tool_input, result_text)
 
                         except Exception as e:
@@ -605,16 +548,12 @@ class SlackTravelBot:
                             "content": [{"type": "text", "text": result_text}]
                         })
 
-                    # Add results and continue loop to get Claude's response based on these 5 tools
-                    # If there are remaining tools, they will be handled naturally in the next conversation turn
                     messages.append({"role": "user", "content": tool_results_blocks})
                     continue
 
-                # Extract final text response
                 text_blocks = [b for b in assistant_content if hasattr(b, 'type') and b.type == "text"]
                 final_text = "\n".join([b.text for b in text_blocks]).strip() if text_blocks else "(No response)"
 
-                # Save assistant response
                 self.db.save_message(session_id, "assistant", final_text)
 
                 return final_text
@@ -627,20 +566,16 @@ class SlackTravelBot:
 
     async def handle_slack_event(self, client: SocketModeClient, req: SocketModeRequest):
         """Handle incoming Slack events"""
-
         if req.type == "events_api":
-            # Acknowledge the request
             response = SocketModeResponse(envelope_id=req.envelope_id)
             await client.send_socket_mode_response(response)
 
             event = req.payload.get("event", {})
             event_type = event.get("type")
 
-            # Handle different event types
             if event_type == "app_mention":
                 await self.handle_mention(event)
             elif event_type == "message":
-                # Only handle direct messages or if bot is in thread
                 if event.get("channel_type") == "im" or event.get("thread_ts"):
                     await self.handle_message(event)
 
@@ -651,7 +586,6 @@ class SlackTravelBot:
         text = event.get("text", "")
         thread_ts = event.get("thread_ts") or event.get("ts")
 
-        # Remove bot mention from text
         bot_id = await self.get_bot_id()
         text = text.replace(f"<@{bot_id}>", "").strip()
 
@@ -670,20 +604,16 @@ class SlackTravelBot:
             )
             return
 
-        # Send typing indicator (reaction as feedback)
         await self.safe_add_reaction(channel_id, thread_ts, "thinking_face")
 
-        # Create session and process
         session_id = self.db.create_session_id(channel_id, user_id, thread_ts)
         self.db.upsert_session(session_id, channel_id, user_id, thread_ts)
 
         try:
             response = await self.process_with_context(text, session_id, channel_id, user_id)
 
-            # Remove thinking reaction
             await self.safe_remove_reaction(channel_id, thread_ts, "thinking_face")
 
-            # Send response in thread
             await self.safe_post_message(
                 channel=channel_id,
                 thread_ts=thread_ts,
@@ -702,8 +632,6 @@ class SlackTravelBot:
 
     async def handle_message(self, event: Dict):
         """Handle direct messages"""
-
-        # Ignore bot's own messages
         if event.get("bot_id"):
             return
 
@@ -716,20 +644,16 @@ class SlackTravelBot:
         if not text:
             return
 
-        # Send typing indicator (reaction as feedback)
         await self.safe_add_reaction(channel_id, ts, "thinking_face")
 
-        # Create session and process
         session_id = self.db.create_session_id(channel_id, user_id, thread_ts)
         self.db.upsert_session(session_id, channel_id, user_id, thread_ts)
 
         try:
             response = await self.process_with_context(text, session_id, channel_id, user_id)
 
-            # Remove thinking reaction
             await self.safe_remove_reaction(channel_id, ts, "thinking_face")
 
-            # Send response
             await self.safe_post_message(
                 channel=channel_id,
                 thread_ts=thread_ts or ts,
@@ -753,11 +677,7 @@ class SlackTravelBot:
 
     async def start(self):
         """Start the Slack bot"""
-
-        # Set up event handler
         self.socket_client.socket_mode_request_listeners.append(self.handle_slack_event)
-
-        # Connect to Slack
         await self.socket_client.connect()
 
         logger.info("=" * 60)
@@ -769,27 +689,20 @@ class SlackTravelBot:
         logger.info("  • Thread replies")
         logger.info("=" * 60)
 
-        # Keep the bot running
         await asyncio.Event().wait()
 
 
 async def main():
     """Main entry point"""
-
-    # Check for test mode
     test_mode = "--test" in sys.argv
-
-    # Get model from environment or use default
     model = os.getenv("CLAUDE_MODEL", "claude-3-7-sonnet-20250219")
 
     try:
         client = SlackTravelBot(model=model)
 
         if test_mode:
-            # Test mode: verify connections
             logger.info("Running in test mode...")
 
-            # Test Anthropic connection
             try:
                 test_response = client.claude.messages.create(
                     model=model,
@@ -801,7 +714,6 @@ async def main():
                 logger.error(f"Anthropic connection failed: {e}")
                 return
 
-            # Test Slack connection
             try:
                 bot_info = await client.slack_client.auth_test()
                 logger.info(f"Successfully connected to Slack as {bot_info['user']}")
@@ -809,7 +721,6 @@ async def main():
                 logger.error(f"Slack connection failed: {e}")
                 return
 
-            # Test database
             try:
                 test_session = client.db.create_session_id("test", "test", "test")
                 client.db.save_message(test_session, "user", "Test message")
@@ -818,7 +729,6 @@ async def main():
                 logger.error(f"Database test failed: {e}")
                 return
 
-            # Test tool definitions
             try:
                 tools = get_tool_definitions()
                 logger.info(f"Loaded {len(tools)} tool definitions")
@@ -832,7 +742,6 @@ async def main():
             logger.info("=" * 60)
 
         else:
-            # Normal operation
             await client.start()
 
     except KeyboardInterrupt:
