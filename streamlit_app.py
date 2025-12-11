@@ -127,7 +127,6 @@ with tab1:
             key="interests"
         )
         
-        # Server selection
         st.subheader("Select Servers to Use")
         col_flight, col_hotel, col_event, col_weather, col_finance = st.columns(5)
         

@@ -26,7 +26,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
-# Optional imports for video processing
 try:
     import cv2
     import numpy as np
@@ -34,17 +33,13 @@ try:
 except ImportError:
     OPENCV_AVAILABLE = False
 
-# Optional imports for YouTube processing
 try:
     import yt_dlp
     YT_DLP_AVAILABLE = True
 except ImportError:
     YT_DLP_AVAILABLE = False
 
-# Directory to store traffic and crowd analysis results
 TRAFFIC_CROWD_DIR = "traffic_crowd_data"
-
-# Initialize FastMCP server
 mcp = FastMCP("traffic-crowd-assistant")
 
 def get_opencv_available() -> bool:
@@ -52,16 +47,7 @@ def get_opencv_available() -> bool:
     return OPENCV_AVAILABLE
 
 def geocode_location(location: str) -> Tuple[float, float, Dict[str, Any]]:
-    """
-    Geocode a location name to coordinates using Open-Meteo geocoding API.
-    
-    Args:
-        location: Location name or coordinates (lat,lon)
-        
-    Returns:
-        Tuple of (latitude, longitude, location_info)
-    """
-    # Check if location is already coordinates
+    """Geocode a location name to coordinates using Open-Meteo geocoding API."""
     if ',' in location:
         try:
             parts = location.split(',')
@@ -71,7 +57,6 @@ def geocode_location(location: str) -> Tuple[float, float, Dict[str, Any]]:
         except ValueError:
             pass
     
-    # Use geocoding API
     GEOCODING_API = "https://geocoding-api.open-meteo.com/v1/search"
     params = {
         "name": location,

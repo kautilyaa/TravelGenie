@@ -12,7 +12,6 @@ from typing import Optional, List, Dict, Any
 from botocore.exceptions import ClientError
 import uuid
 
-# Get table names from environment
 PROJECT_NAME = os.getenv('PROJECT_NAME', 'travel-assistant-slack-bot')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'production')
 AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
@@ -30,7 +29,6 @@ TOOL_CALLS_TABLE = os.getenv(
     f'{PROJECT_NAME}-{ENVIRONMENT}-tool-calls'
 )
 
-# Initialize DynamoDB
 try:
     dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
     chat_sessions_table = dynamodb.Table(CHAT_SESSIONS_TABLE)
@@ -108,7 +106,6 @@ class ChatDatabase:
             )
             
             items = response.get('Items', [])
-            # Sort by created_at and reverse to get chronological order
             items.sort(key=lambda x: x.get('created_at', 0))
             
             result = []
@@ -125,7 +122,6 @@ class ChatDatabase:
                         "timestamp": timestamp_str
                     })
                 except Exception as e:
-                    # Fallback if timestamp conversion fails
                     result.append({
                         "role": item.get('role', ''),
                         "content": item.get('content', ''),
