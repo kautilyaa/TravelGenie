@@ -1,0 +1,28 @@
+# Google Colab Configuration for Mock Travel Genie
+
+# Colab-specific settings
+colab:
+  port: 7860  # Default Colab port
+  enable_ngrok: false  # Set to true to expose via ngrok
+  ngrok_token: ""  # ngrok authtoken if using ngrok
+  
+# Application configuration
+application:
+  port: 7860
+  host: "0.0.0.0"
+  
+# Resource limits (Colab free tier)
+resources:
+  max_memory_gb: 12.7  # Free tier limit
+  max_disk_gb: 107  # Free tier limit
+  timeout_hours: 12  # Maximum session time
+  
+# Monitoring
+monitoring:
+  collect_resource_metrics: true
+  save_metrics_locally: true
+  
+# Cost
+cost:
+  free_tier: true
+  pro_tier_monthly: 9.99  # USD per month (if using Colab Pro)

@@ -6,15 +6,12 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 import json
 
-# Claude API imports
 try:
     from anthropic import Anthropic  # type: ignore
     CLAUDE_AVAILABLE = True
 except ImportError:
     CLAUDE_AVAILABLE = False
-    # Note: Warning will be shown in the chat tab if needed
 
-# Add server directories to Python path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "flight_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "hotel_server"))
@@ -24,7 +21,6 @@ sys.path.insert(0, str(PROJECT_ROOT / "servers" / "weather_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "finance_server"))
 sys.path.insert(0, str(PROJECT_ROOT / "servers" / "traffic_crowd_server"))
 
-# Verify critical modules are available before starting Streamlit
 try:
     import mcp.server.fastmcp
     import geopy
@@ -38,7 +34,6 @@ except ImportError as e:
     print("  ./run_streamlit.sh")
     sys.exit(1)
 
-# Load environment variables
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -52,17 +47,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize session state
 if 'results' not in st.session_state:
     st.session_state.results = {}
 if 'api_keys_set' not in st.session_state:
     st.session_state.api_keys_set = False
 
-# Title
 st.title("🌍 Travel Assistant - MCP Server Orchestration")
 st.markdown("**Orchestrate 7 MCP servers** to create comprehensive travel plans")
 
-# Sidebar Configuration
 with st.sidebar:
     st.header("⚙️ API Configuration")
     
@@ -88,7 +80,6 @@ with st.sidebar:
     st.header("📊 Server Status")
     server_status = {}
     
-    # Check if servers can be imported
     servers_to_check = {
         "Flight Server": "servers.flight_server.flight_server",
         "Hotel Server": "servers.hotel_server.hotel_server",
@@ -109,7 +100,6 @@ with st.sidebar:
     for server, status in server_status.items():
         st.text(f"{server}: {status}")
 
-# Main Interface
 tab1, tab2, tab3, tab4 = st.tabs(["🎯 Plan Trip", "💬 Chat with Claude", "🔍 Individual Searches", "📋 View Results"])
 
 with tab1:
@@ -168,19 +158,17 @@ with tab1:
             st.error("⚠️ End date must be after start date")
             st.stop()
         
-        # Initialize progress tracking
         progress_bar = st.progress(0)
         status_text = st.empty()
         results_container = st.container()
         
         total_steps = sum([
-            use_flights, use_hotels, use_events, use_weather, use_finance, True  # +1 for geocoding
+            use_flights, use_hotels, use_events, use_weather, use_finance, True
         ])
         current_step = 0
         
         results = {}
         
-        # Step 1: Geocoding (always needed)
         status_text.text("🗺️ Step 1: Getting location coordinates...")
         progress_bar.progress(current_step / total_steps)
         try:
@@ -194,7 +182,6 @@ with tab1:
                 "destination": dest_result
             }
             
-            # Extract coordinates from nested location_data structure
             origin_location_data = origin_result.get("location_data", {})
             dest_location_data = dest_result.get("location_data", {})
             
@@ -203,7 +190,6 @@ with tab1:
             dest_lat = dest_location_data.get("latitude", "N/A")
             dest_lon = dest_location_data.get("longitude", "N/A")
             
-            # Display route format: Origin -> Destination with coordinates
             if origin_lat != "N/A" and dest_lat != "N/A":
                 st.success(f"✅ Geocoded: {origin} → {destination} | ({origin_lat}, {origin_lon}) → ({dest_lat}, {dest_lon})")
             else:
@@ -213,7 +199,6 @@ with tab1:
             st.error(f"❌ Geocoding error: {e}")
             results["geocoding"] = None
         
-        # Step 2: Flight Search
         if use_flights:
             status_text.text(f"✈️ Step {current_step + 1}/{total_steps}: Searching for flights...")
             progress_bar.progress(current_step / total_steps)
@@ -231,7 +216,6 @@ with tab1:
                     max_results=10
                 )
                 
-                # Load full flight data from saved file
                 search_id = flight_results.get("search_id", "")
                 if search_id:
                     try:
@@ -239,14 +223,12 @@ with tab1:
                         if os.path.exists(flight_file_path):
                             with open(flight_file_path, 'r') as f:
                                 full_flight_data = json.load(f)
-                                # Add flights to results for display
                                 flight_results["best_flights"] = full_flight_data.get("best_flights", [])
                                 flight_results["other_flights"] = full_flight_data.get("other_flights", [])
                     except Exception as e:
                         st.warning(f"Could not load full flight data: {e}")
                 
                 results["flights"] = flight_results
-                # Flight results structure: best_flights and other_flights
                 best_flights = flight_results.get("best_flights", [])
                 other_flights = flight_results.get("other_flights", [])
                 flight_count = len(best_flights) + len(other_flights)
@@ -264,7 +246,6 @@ with tab1:
                 st.error(f"❌ Flight search error: {e}")
                 results["flights"] = None
         
-        # Step 3: Hotel Search
         if use_hotels:
             status_text.text(f"🏨 Step {current_step + 1}/{total_steps}: Searching for hotels...")
             progress_bar.progress(current_step / total_steps)
@@ -281,7 +262,6 @@ with tab1:
                     max_results=10
                 )
                 
-                # Load full hotel data from saved file
                 search_id = hotel_results.get("search_id", "")
                 if search_id:
                     try:
@@ -289,13 +269,11 @@ with tab1:
                         if os.path.exists(hotel_file_path):
                             with open(hotel_file_path, 'r') as f:
                                 full_hotel_data = json.load(f)
-                                # Add properties to results for display
                                 hotel_results["properties"] = full_hotel_data.get("properties", [])
                     except Exception as e:
                         st.warning(f"Could not load full hotel data: {e}")
                 
                 results["hotels"] = hotel_results
-                # Hotel results structure: properties
                 hotel_count = hotel_results.get("total_properties", 0)
                 if hotel_count > 0:
                     st.success(f"✅ Found {hotel_count} hotel options")
@@ -306,31 +284,25 @@ with tab1:
                 st.error(f"❌ Hotel search error: {e}")
                 results["hotels"] = None
         
-        # Step 4: Weather Forecast
         if use_weather:
             status_text.text(f"🌤️ Step {current_step + 1}/{total_steps}: Getting weather forecast...")
             progress_bar.progress(current_step / total_steps)
             try:
                 from servers.weather_server.weather_server import get_weather_forecast
                 
-                # Use destination name for weather (Open-Meteo supports location names)
-                # This ensures the location name appears correctly in results
                 weather_results = get_weather_forecast(
                     location=destination,
                     forecast_days=5,
                     hourly=False
                 )
                 
-                # Update location name in weather results if geocoding was successful
                 if results.get("geocoding") and results["geocoding"].get("destination"):
                     dest_result = results["geocoding"]["destination"]
                     dest_location_data = dest_result.get("location_data", {})
                     display_name = dest_location_data.get("display_name", destination)
                     
-                    # Update the location name in weather results
                     if "location" in weather_results:
                         weather_results["location"]["name"] = display_name
-                        # Update coordinates if available
                         lat = dest_location_data.get("latitude")
                         lon = dest_location_data.get("longitude")
                         if lat and lon:
@@ -343,7 +315,6 @@ with tab1:
                 st.error(f"❌ Weather error: {e}")
                 results["weather"] = None
         
-        # Step 5: Event Search
         if use_events:
             status_text.text(f"🎭 Step {current_step + 1}/{total_steps}: Finding local events...")
             progress_bar.progress(current_step / total_steps)
@@ -366,14 +337,12 @@ with tab1:
                 st.error(f"❌ Event search error: {e}")
                 results["events"] = None
         
-        # Step 6: Currency Conversion & Budget Analysis
         if use_finance:
             status_text.text(f"💰 Step {current_step + 1}/{total_steps}: Analyzing budget...")
             progress_bar.progress(current_step / total_steps)
             try:
                 from servers.finance_server.finance_server import convert_currency
                 
-                # Convert currency if needed
                 conversion_rate = 1.0
                 if currency != "USD":
                     conversion_result = convert_currency(
@@ -390,12 +359,10 @@ with tab1:
                     "to": "USD"
                 }
                 
-                # Calculate total costs
                 total_cost = 0
                 cost_breakdown = {}
                 
                 if results.get("flights"):
-                    # Flight results structure: best_flights and other_flights
                     best_flights = results["flights"].get("best_flights", [])
                     other_flights = results["flights"].get("other_flights", [])
                     flights = best_flights + other_flights
@@ -407,14 +374,11 @@ with tab1:
                             cost_breakdown["flights"] = flight_price
                 
                 if results.get("hotels"):
-                    # Hotel results structure: properties
                     hotels = results["hotels"].get("properties", [])
                     if hotels:
-                        # Get price per night and calculate total for stay duration
                         rate_info = hotels[0].get("rate_per_night", {})
                         price_per_night = rate_info.get("extracted_lowest") or rate_info.get("low") or 0
                         if price_per_night:
-                            # Calculate nights
                             nights = (end_date - start_date).days
                             hotel_total = price_per_night * nights * adults
                             total_cost += hotel_total
@@ -438,19 +402,15 @@ with tab1:
         progress_bar.progress(1.0)
         status_text.text("✅ Complete!")
         
-        # Store results in session state
         st.session_state.results = results
         
-        # Display results
         with results_container:
             st.header("📊 Travel Plan Results")
             
-            # Summary Cards
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
                 if results.get("flights"):
-                    # Flight results structure: best_flights and other_flights
                     best_flights = results["flights"].get("best_flights", [])
                     other_flights = results["flights"].get("other_flights", [])
                     flight_count = len(best_flights) + len(other_flights)
@@ -458,7 +418,6 @@ with tab1:
             
             with col2:
                 if results.get("hotels"):
-                    # Hotel results structure: properties
                     hotel_count = results["hotels"].get("total_properties", 0)
                     st.metric("Hotel Options", hotel_count)
             
@@ -472,10 +431,8 @@ with tab1:
                     remaining = results["budget_analysis"].get("remaining_budget", 0)
                     st.metric("Remaining Budget", f"${remaining:,.2f}")
             
-            # Detailed Results
             if results.get("flights"):
                 st.subheader("✈️ Flight Options")
-                # Flight results structure: best_flights and other_flights
                 best_flights = results["flights"].get("best_flights", [])
                 other_flights = results["flights"].get("other_flights", [])
                 
@@ -500,7 +457,6 @@ with tab1:
             
             if results.get("hotels"):
                 st.subheader("🏨 Hotel Options")
-                # Hotel results structure: properties
                 hotels = results["hotels"].get("properties", [])
                 if hotels:
                     for i, hotel in enumerate(hotels[:5], 1):
@@ -527,7 +483,6 @@ with tab1:
                 st.subheader("💰 Budget Analysis")
                 st.json(results["budget_analysis"])
             
-            # Download button
             st.download_button(
                 label="📥 Download Full Results (JSON)",
                 data=json.dumps(results, indent=2, default=str),
@@ -543,7 +498,6 @@ with tab2:
         st.error("❌ Anthropic SDK not installed. Please install it: `pip install anthropic`")
         st.stop()
     
-    # Initialize Claude client
     anthropic_api_key = st.sidebar.text_input(
         "Anthropic API Key",
         value=os.getenv("ANTHROPIC_API_KEY", ""),
@@ -556,7 +510,6 @@ with tab2:
         st.info("💡 You can also set it as an environment variable: `ANTHROPIC_API_KEY`")
         st.stop()
     
-    # Initialize session state for chat
     if 'claude_messages' not in st.session_state:
         st.session_state.claude_messages = []
     
@@ -568,23 +521,19 @@ with tab2:
             st.error(f"❌ Error initializing Claude client: {e}")
             st.stop()
     
-    # Import orchestrator
     try:
         from claude_orchestrator import get_tool_definitions, execute_tool, get_system_prompt
     except ImportError as e:
         st.error(f"❌ Could not import orchestrator: {e}")
         st.stop()
     
-    # Display chat history
     chat_container = st.container()
     with chat_container:
         for message in st.session_state.claude_messages:
             with st.chat_message(message["role"]):
-                # Display content
                 if message.get("content"):
                     st.markdown(message["content"])
                 
-                # Display tool calls with better formatting
                 if "tool_calls" in message and message["tool_calls"]:
                     st.markdown("---")
                     st.markdown("**🔧 Tools Used:**")
@@ -592,28 +541,22 @@ with tab2:
                         tool_name = tool_call.get("name", "Unknown")
                         tool_input = tool_call.get("input", {})
                         
-                        # Display tool call in a cleaner format
                         with st.expander(f"**{i}. {tool_name}**", expanded=False):
                             st.json(tool_input)
                 
-                # Display status messages if any
                 if "status_messages" in message:
                     for status in message["status_messages"]:
                         st.info(f"ℹ️ {status}")
     
-    # Chat input
     user_input = st.chat_input("Ask me about travel planning... (e.g., 'Plan a trip to Banff from Reston, Virginia for June 7-14, 2025')")
     
     if user_input:
-        # Add user message to chat
         st.session_state.claude_messages.append({"role": "user", "content": user_input})
         
         with st.chat_message("user"):
             st.markdown(user_input)
         
-        # Get Claude's response
         with st.chat_message("assistant"):
-            # Create placeholders for different parts of the response
             status_placeholder = st.empty()
             thinking_placeholder = st.empty()
             tool_execution_container = st.container()
@@ -621,37 +564,28 @@ with tab2:
             response_placeholder = st.empty()
             
             try:
-                # Prepare messages for Claude (convert to API format)
                 api_messages = []
-                for msg in st.session_state.claude_messages[:-1]:  # Exclude the just-added user message
+                for msg in st.session_state.claude_messages[:-1]:
                     if msg["role"] == "user":
                         api_messages.append({
                             "role": "user",
                             "content": msg["content"]
                         })
                     elif msg["role"] == "assistant":
-                        # Reconstruct assistant message with tool calls if any
                         content = []
                         if msg.get("content"):
                             content.append({"type": "text", "text": msg["content"]})
-                        if "tool_calls" in msg:
-                            # Note: We'll need to store tool use blocks differently
-                            # For now, just include text content
-                            pass
                         if content:
                             api_messages.append({
                                 "role": "assistant",
                                 "content": content
                             })
                 
-                # Add current user message
                 api_messages.append({
                     "role": "user",
                     "content": user_input
                 })
                 
-                # Call Claude with tools
-                # Try claude-3-5-sonnet first, fallback to claude-3-haiku if not available
                 model_name = "claude-3-5-sonnet-20241022"
                 thinking_placeholder.info("🤔 **Thinking...** Analyzing your request and planning the best approach.")
                 
@@ -664,7 +598,6 @@ with tab2:
                         tools=get_tool_definitions()
                     )
                 except Exception as model_error:
-                    # If model not found, try fallback model
                     if "404" in str(model_error) or "not_found" in str(model_error).lower():
                         status_placeholder.warning(f"⚠️ Model {model_name} not available. Using fallback model...")
                         model_name = "claude-3-haiku-20240307"
@@ -679,20 +612,16 @@ with tab2:
                     else:
                         raise
                 
-                # Clear thinking placeholder
                 thinking_placeholder.empty()
                 
-                # Process response
                 assistant_message = {"role": "assistant", "content": "", "tool_calls": [], "status_messages": []}
                 full_response = ""
                 tool_calls_info = []
                 
-                # Handle tool calls
                 if response.stop_reason == "tool_use":
                     tool_results = []
                     tool_status_messages = []
                     
-                    # First round of tool calls
                     with tool_execution_container:
                         for idx, content_block in enumerate(response.content):
                             if content_block.type == "tool_use":
@@ -706,11 +635,9 @@ with tab2:
                                 }
                                 tool_calls_info.append(tool_call_info)
                                 
-                                # Show tool call in real-time
                                 tool_status = st.empty()
                                 tool_status.info(f"🔧 **Executing:** `{tool_name}`")
                                 
-                                # Execute tool
                                 tool_result = execute_tool(tool_name, **tool_input)
                                 tool_results.append({
                                     "type": "tool_result",
@@ -718,10 +645,8 @@ with tab2:
                                     "content": json.dumps(tool_result, indent=2, default=str)
                                 })
                                 
-                                # Update status to show completion
                                 tool_status.success(f"✅ **Completed:** `{tool_name}`")
                     
-                    # Show all tool calls summary after execution
                     if tool_calls_info:
                         tool_calls_placeholder.markdown("---")
                         tool_calls_placeholder.markdown("**🔧 Tools Executed:**")
@@ -731,7 +656,6 @@ with tab2:
                             with tool_calls_placeholder.expander(f"**{i}. {tool_name}**", expanded=False):
                                 st.json(tool_input)
                     
-                    # Call Claude again with tool results
                     api_messages.append({
                         "role": "assistant",
                         "content": response.content
@@ -741,7 +665,6 @@ with tab2:
                         "content": tool_results
                     })
                     
-                    # Get final response (may need multiple rounds)
                     max_iterations = 5
                     iteration = 0
                     current_response = response
@@ -751,7 +674,6 @@ with tab2:
                         tool_results = []
                         round_tool_calls = []
                         
-                        # Show status for additional rounds
                         if iteration > 1:
                             thinking_placeholder.info(f"🤔 **Analyzing results...** (Round {iteration})")
                         
@@ -769,11 +691,9 @@ with tab2:
                                     tool_calls_info.append(tool_call_info)
                                     round_tool_calls.append(tool_call_info)
                                     
-                                    # Show tool execution in real-time
                                     tool_status = st.empty()
                                     tool_status.info(f"🔧 **Executing:** `{tool_name}`")
                                     
-                                    # Execute tool
                                     tool_result = execute_tool(tool_name, **tool_input)
                                     tool_results.append({
                                         "type": "tool_result",
@@ -781,10 +701,8 @@ with tab2:
                                         "content": json.dumps(tool_result, indent=2, default=str)
                                     })
                                     
-                                    # Update status
                                     tool_status.success(f"✅ **Completed:** `{tool_name}`")
                         
-                        # Update tool calls display summary after execution
                         if round_tool_calls:
                             tool_calls_placeholder.markdown("---")
                             tool_calls_placeholder.markdown(f"**🔧 Additional Tools Executed (Round {iteration}):**")
@@ -814,7 +732,6 @@ with tab2:
                         )
                         thinking_placeholder.empty()
                     
-                    # Extract text content from final response
                     for content_block in current_response.content:
                         if content_block.type == "text":
                             full_response += content_block.text
@@ -822,26 +739,20 @@ with tab2:
                     assistant_message["tool_calls"] = tool_calls_info
                 
                 else:
-                    # Extract text content from response
                     for content_block in response.content:
                         if content_block.type == "text":
                             full_response += content_block.text
                 
-                # Display response progressively
                 if full_response:
-                    # Clear any status messages
                     thinking_placeholder.empty()
                     status_placeholder.empty()
                     
-                    # Display the response
                     response_placeholder.markdown(full_response)
                     assistant_message["content"] = full_response
                 else:
-                    # If no text response but we have tool calls, show a message
                     if tool_calls_info:
                         response_placeholder.info("✅ Tools executed successfully. Processing results...")
                 
-                # Add to chat history
                 st.session_state.claude_messages.append(assistant_message)
                 
             except Exception as e:
@@ -849,7 +760,6 @@ with tab2:
                 response_placeholder.error(error_msg)
                 import traceback
                 st.code(traceback.format_exc())
-                # Add error to chat history
                 st.session_state.claude_messages.append({
                     "role": "assistant",
                     "content": error_msg,
@@ -857,10 +767,8 @@ with tab2:
                     "status_messages": []
                 })
         
-        # Rerun to show new messages
         st.rerun()
     
-    # Clear chat button
     if st.button("🗑️ Clear Chat History"):
         st.session_state.claude_messages = []
         st.rerun()

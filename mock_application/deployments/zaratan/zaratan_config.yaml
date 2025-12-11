@@ -1,0 +1,34 @@
+# Zaratan HPC Configuration for Mock Travel Genie
+
+# SLURM job configuration
+zaratan:
+  partition: "gpu"  # Options: gpu, cpu, highmem
+  gpus: 1
+  cpus: 8
+  memory: "32G"  # Options: 16G, 32G, 64G, 128G
+  time_limit: "24:00:00"  # Format: HH:MM:SS
+  account: ""  # Your SLURM account name
+  enable_slurm_metrics: true
+  
+# Application configuration
+application:
+  port: 8501
+  host: "0.0.0.0"
+  
+# Resource limits
+resources:
+  max_gpus: 4  # Maximum GPUs per job
+  max_memory: "256G"  # Maximum memory per job
+  max_time: "168:00:00"  # Maximum time (7 days)
+  
+# Monitoring
+monitoring:
+  collect_slurm_metrics: true
+  save_metrics_locally: true
+  slurm_job_id_env: "SLURM_JOB_ID"
+  
+# Access
+access:
+  ssh_tunnel_required: true
+  tunnel_command: "ssh -L 8501:compute-node:8501 zaratan.umd.edu"
+  local_access_url: "http://localhost:8501"

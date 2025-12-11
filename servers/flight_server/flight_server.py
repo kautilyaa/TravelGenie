@@ -5,14 +5,11 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 from mcp.server.fastmcp import FastMCP
 
-# Directory to store flight search results
 FLIGHTS_DIR = "flights"
-
-# Initialize FastMCP server
 mcp = FastMCP("flight-assistant")
 
 def get_serpapi_key() -> str:
-    """Get SerpAPI key from environment variable."""
+    """Returns SerpAPI key from environment."""
     api_key = os.getenv("SERPAPI_KEY")
     if not api_key:
         raise ValueError("SERPAPI_KEY environment variable is required")
@@ -35,33 +32,10 @@ def search_flights(
     language: str = "en",
     max_results: int = 10
 ) -> Dict[str, Any]:
-    """
-    Search for flights using SerpAPI's Google Flights API.
-    
-    Args:
-        departure_id: Departure airport code (e.g., 'LAX', 'JFK') or location kgmid
-        arrival_id: Arrival airport code (e.g., 'CDG', 'LHR') or location kgmid
-        outbound_date: Departure date in YYYY-MM-DD format (e.g., '2024-12-15')
-        return_date: Return date in YYYY-MM-DD format (required for round trips)
-        trip_type: Flight type (1=Round trip, 2=One way, 3=Multi-city)
-        adults: Number of adult passengers (default: 1)
-        children: Number of child passengers (default: 0)
-        infants_in_seat: Number of infants in seat (default: 0)
-        infants_on_lap: Number of infants on lap (default: 0)
-        travel_class: Travel class (1=Economy, 2=Premium economy, 3=Business, 4=First)
-        currency: Currency for prices (default: 'USD')
-        country: Country code for search (default: 'us')
-        language: Language code (default: 'en')
-        max_results: Maximum number of results to store (default: 10)
-        
-    Returns:
-        Dict containing flight search results and metadata
-    """
+    """Search for flights using SerpAPI's Google Flights API."""
     
     try:
         api_key = get_serpapi_key()
-        
-        # Build search parameters
         params = {
             "engine": "google_flights",
             "api_key": api_key,
@@ -79,28 +53,22 @@ def search_flights(
             "hl": language
         }
         
-        # Add return date for round trips
         if trip_type == 1 and return_date:
             params["return_date"] = return_date
         elif trip_type == 1 and not return_date:
             return {"error": "Return date is required for round trip flights"}
         
-        # Make API request
         response = requests.get("https://serpapi.com/search", params=params)
         response.raise_for_status()
         
         flight_data = response.json()
         
-        # Create search identifier
         search_id = f"{departure_id}_{arrival_id}_{outbound_date}"
         if return_date:
             search_id += f"_{return_date}"
         search_id += f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Create directory structure
         os.makedirs(FLIGHTS_DIR, exist_ok=True)
-        
-        # Process and store flight results
         processed_results = {
             "search_metadata": {
                 "search_id": search_id,
@@ -125,14 +93,12 @@ def search_flights(
             "airports": flight_data.get("airports", [])
         }
         
-        # Save results to file
         file_path = os.path.join(FLIGHTS_DIR, f"{search_id}.json")
         with open(file_path, "w") as f:
             json.dump(processed_results, f, indent=2)
         
         print(f"Flight search results saved to: {file_path}")
         
-        # Return summary for the user
         summary = {
             "search_id": search_id,
             "total_best_flights": len(processed_results["best_flights"]),
@@ -155,15 +121,7 @@ def search_flights(
 
 @mcp.tool()
 def get_flight_details(search_id: str) -> str:
-    """
-    Get detailed information about a specific flight search.
-    
-    Args:
-        search_id: The search ID returned from search_flights
-        
-    Returns:
-        JSON string with detailed flight information
-    """
+    """Returns detailed flight information for a given search ID."""
     
     file_path = os.path.join(FLIGHTS_DIR, f"{search_id}.json")
     
@@ -183,17 +141,7 @@ def filter_flights_by_price(
     max_price: Optional[float] = None,
     min_price: Optional[float] = None
 ) -> str:
-    """
-    Filter flights from a search by price range.
-    
-    Args:
-        search_id: The search ID returned from search_flights
-        max_price: Maximum price filter (optional)
-        min_price: Minimum price filter (optional)
-        
-    Returns:
-        JSON string with filtered flight results
-    """
+    """Filters flights by price range."""
     
     file_path = os.path.join(FLIGHTS_DIR, f"{search_id}.json")
     
@@ -233,16 +181,7 @@ def filter_flights_by_price(
 
 @mcp.tool()
 def filter_flights_by_airline(search_id: str, airlines: List[str]) -> str:
-    """
-    Filter flights from a search by specific airlines.
-    
-    Args:
-        search_id: The search ID returned from search_flights
-        airlines: List of airline names or codes to filter by
-        
-    Returns:
-        JSON string with filtered flight results
-    """
+    """Filters flights by airline names or codes."""
     
     file_path = os.path.join(FLIGHTS_DIR, f"{search_id}.json")
     
@@ -281,11 +220,7 @@ def filter_flights_by_airline(search_id: str, airlines: List[str]) -> str:
 
 @mcp.resource("flights://searches")
 def get_flight_searches() -> str:
-    """
-    List all available flight searches.
-    
-    This resource provides a list of all saved flight searches.
-    """
+    """Lists all saved flight searches."""
     searches = []
     
     if os.path.exists(FLIGHTS_DIR):
@@ -332,12 +267,7 @@ def get_flight_searches() -> str:
 
 @mcp.resource("flights://{search_id}")
 def get_flight_search_details(search_id: str) -> str:
-    """
-    Get detailed information about a specific flight search.
-    
-    Args:
-        search_id: The flight search ID to retrieve details for
-    """
+    """Returns detailed information for a specific flight search."""
     file_path = os.path.join(FLIGHTS_DIR, f"{search_id}.json")
     
     if not os.path.exists(file_path):
@@ -420,7 +350,7 @@ def travel_planning_prompt(
     budget: str = "",
     preferences: str = ""
 ) -> str:
-    """Generate a comprehensive travel planning prompt for Claude."""
+    """Generates a travel planning prompt for Claude."""
     
     prompt = f"""Plan a comprehensive trip from {departure} to {destination} departing on {departure_date}"""
     
@@ -481,7 +411,7 @@ Present the information in a clear, organized format with actionable recommendat
 
 @mcp.prompt()
 def flight_comparison_prompt(search_id: str) -> str:
-    """Generate a prompt for detailed flight comparison and analysis."""
+    """Generates a prompt for flight comparison analysis."""
     
     return f"""Analyze and compare the flight options from search ID: {search_id}
 
@@ -521,5 +451,4 @@ Please provide a comprehensive analysis including:
 Please format the analysis in a clear, easy-to-read structure with specific recommendations for different traveler priorities (speed, cost, convenience, comfort)."""
 
 if __name__ == "__main__":
-    # Initialize and run the server
     mcp.run(transport='stdio')

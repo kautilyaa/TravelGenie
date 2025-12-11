@@ -5,14 +5,11 @@ from typing import List, Dict, Optional, Any, Union
 from datetime import datetime, timedelta
 from mcp.server.fastmcp import FastMCP
 
-# Directory to store hotel search results
 HOTELS_DIR = "hotels"
-
-# Initialize FastMCP server
 mcp = FastMCP("hotel-assistant")
 
 def get_serpapi_key() -> str:
-    """Get SerpAPI key from environment variable."""
+    """Returns SerpAPI key from environment."""
     api_key = os.getenv("SERPAPI_KEY")
     if not api_key:
         raise ValueError("SERPAPI_KEY environment variable is required")
@@ -40,38 +37,10 @@ def search_hotels(
     bedrooms: Optional[int] = None,
     max_results: int = 20
 ) -> Dict[str, Any]:
-    """
-    Search for hotels using SerpAPI's Google Hotels API.
-    
-    Args:
-        location: Hotel search location (e.g., 'New York', 'Paris', 'Bali Resorts')
-        check_in_date: Check-in date in YYYY-MM-DD format (e.g., '2025-06-15')
-        check_out_date: Check-out date in YYYY-MM-DD format (e.g., '2025-06-20')
-        adults: Number of adult guests (default: 2)
-        children: Number of child guests (default: 0)
-        children_ages: List of children ages (1-17 years)
-        currency: Currency for prices (default: 'USD')
-        country: Country code for search (default: 'us')
-        language: Language code (default: 'en')
-        sort_by: Sort results (3=Lowest price, 8=Highest rating, 13=Most reviewed)
-        hotel_class: Filter by hotel class (2-5 stars, e.g., [4, 5])
-        amenities: Filter by amenity IDs (e.g., [35, 9, 19])
-        property_types: Filter by property type IDs (e.g., [17, 12, 18])
-        brands: Filter by brand IDs (e.g., [33, 67, 101])
-        free_cancellation: Show only hotels with free cancellation
-        special_offers: Show only hotels with special offers
-        vacation_rentals: Search for vacation rentals instead of hotels
-        bedrooms: Minimum number of bedrooms (vacation rentals only)
-        max_results: Maximum number of results to store (default: 20)
-        
-    Returns:
-        Dict containing hotel search results and metadata
-    """
+    """Search for hotels using SerpAPI's Google Hotels API."""
     
     try:
         api_key = get_serpapi_key()
-        
-        # Build search parameters
         params = {
             "engine": "google_hotels",
             "api_key": api_key,
@@ -85,7 +54,6 @@ def search_hotels(
             "hl": language
         }
         
-        # Add optional parameters
         if children_ages:
             params["children_ages"] = ",".join(str(age) for age in children_ages)
         
@@ -116,20 +84,15 @@ def search_hotels(
         if bedrooms is not None:
             params["bedrooms"] = bedrooms
         
-        # Make API request
         response = requests.get("https://serpapi.com/search", params=params)
         response.raise_for_status()
         
         hotel_data = response.json()
         
-        # Create search identifier
         search_id = f"{location.replace(' ', '_')}_{check_in_date}_{check_out_date}"
         search_id += f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Create directory structure
         os.makedirs(HOTELS_DIR, exist_ok=True)
-        
-        # Process and store hotel results
         processed_results = {
             "search_metadata": {
                 "search_id": search_id,
@@ -161,14 +124,12 @@ def search_hotels(
             "serpapi_pagination": hotel_data.get("serpapi_pagination", {})
         }
         
-        # Save results to file
         file_path = os.path.join(HOTELS_DIR, f"{search_id}.json")
         with open(file_path, "w") as f:
             json.dump(processed_results, f, indent=2)
         
         print(f"Hotel search results saved to: {file_path}")
         
-        # Calculate price range
         properties = processed_results["properties"]
         price_range = None
         if properties:
@@ -185,7 +146,6 @@ def search_hotels(
                     "currency": currency
                 }
         
-        # Return summary for the user
         summary = {
             "search_id": search_id,
             "total_properties": len(processed_results["properties"]),
@@ -208,15 +168,7 @@ def search_hotels(
 
 @mcp.tool()
 def get_hotel_details(search_id: str) -> str:
-    """
-    Get detailed information about a specific hotel search.
-    
-    Args:
-        search_id: The search ID returned from search_hotels
-        
-    Returns:
-        JSON string with detailed hotel information
-    """
+    """Returns detailed hotel information for a given search ID."""
     
     file_path = os.path.join(HOTELS_DIR, f"{search_id}.json")
     
@@ -237,18 +189,7 @@ def get_property_details(
     country: str = "us",
     language: str = "en"
 ) -> str:
-    """
-    Get detailed information about a specific property using its token.
-    
-    Args:
-        property_token: The property token from hotel search results
-        currency: Currency for prices (default: 'USD')
-        country: Country code for search (default: 'us')
-        language: Language code (default: 'en')
-        
-    Returns:
-        JSON string with detailed property information
-    """
+    """Returns detailed property information using its token."""
     
     try:
         api_key = get_serpapi_key()
@@ -281,17 +222,7 @@ def filter_hotels_by_price(
     max_price: Optional[float] = None,
     min_price: Optional[float] = None
 ) -> str:
-    """
-    Filter hotels from a search by price range.
-    
-    Args:
-        search_id: The search ID returned from search_hotels
-        max_price: Maximum price per night filter (optional)
-        min_price: Minimum price per night filter (optional)
-        
-    Returns:
-        JSON string with filtered hotel results
-    """
+    """Filters hotels by price range."""
     
     file_path = os.path.join(HOTELS_DIR, f"{search_id}.json")
     
@@ -333,16 +264,7 @@ def filter_hotels_by_rating(
     search_id: str,
     min_rating: float = 4.0
 ) -> str:
-    """
-    Filter hotels from a search by minimum rating.
-    
-    Args:
-        search_id: The search ID returned from search_hotels
-        min_rating: Minimum overall rating filter (default: 4.0)
-        
-    Returns:
-        JSON string with filtered hotel results
-    """
+    """Filters hotels by minimum rating."""
     
     file_path = os.path.join(HOTELS_DIR, f"{search_id}.json")
     

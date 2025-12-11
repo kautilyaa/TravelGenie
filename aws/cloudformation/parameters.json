@@ -13,15 +13,15 @@
   },
   {
     "ParameterKey": "ContainerCpu",
-    "ParameterValue": "512"
-  },
-  {
-    "ParameterKey": "ContainerMemory",
     "ParameterValue": "1024"
   },
   {
+    "ParameterKey": "ContainerMemory",
+    "ParameterValue": "2048"
+  },
+  {
     "ParameterKey": "DesiredTaskCount",
-    "ParameterValue": "1"
+    "ParameterValue": "2"
   },
   {
     "ParameterKey": "MaxTaskCount",

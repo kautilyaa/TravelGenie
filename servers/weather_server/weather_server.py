@@ -1,18 +1,4 @@
-"""
-Weather Server MCP - Using Open-Meteo API (Free, No API Key Required)
-
-This server provides weather data using Open-Meteo, a free and open-source weather API.
-No API key is required, making it easy to use without registration.
-
-Features:
-- Current weather data
-- Weather forecasts (up to 16 days)
-- Historical weather data (back to 1940)
-- Location geocoding/search
-- Weather comparisons across multiple locations
-
-API Documentation: https://open-meteo.com/en/docs
-"""
+"""Weather server using Open-Meteo API (free, no API key required)."""
 
 import requests
 import json
@@ -21,28 +7,15 @@ from typing import List, Dict, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from mcp.server.fastmcp import FastMCP
 
-# Directory to store weather search results
-WEATHER_DIR = "weather_data"
-
-# Initialize FastMCP server
+WEATHER_DIR = os.getenv("WEATHER_DATA_DIR", "weather_data")
 mcp = FastMCP("weather-assistant")
 
-# Open-Meteo API endpoints (free, no API key required)
 GEOCODING_API = "https://geocoding-api.open-meteo.com/v1/search"
 WEATHER_API = "https://api.open-meteo.com/v1/forecast"
 HISTORICAL_API = "https://archive-api.open-meteo.com/v1/archive"
 
 def geocode_location(location: str) -> Tuple[float, float, Dict[str, Any]]:
-    """
-    Geocode a location name to coordinates using Open-Meteo geocoding API.
-    
-    Args:
-        location: Location name, coordinates (lat,lon), or ZIP code
-        
-    Returns:
-        Tuple of (latitude, longitude, location_info)
-    """
-    # Check if location is already coordinates
+    """Geocodes a location name to coordinates."""
     if ',' in location:
         try:
             parts = location.split(',')
@@ -52,7 +25,6 @@ def geocode_location(location: str) -> Tuple[float, float, Dict[str, Any]]:
         except ValueError:
             pass
     
-    # Use geocoding API
     params = {
         "name": location,
         "count": 1,
@@ -89,23 +61,10 @@ def get_current_weather(
     units: str = "m",
     language: str = "en"
 ) -> Dict[str, Any]:
-    """
-    Get current weather information for a specific location using Open-Meteo (free API).
-    
-    Args:
-        location: Location name, coordinates (lat,lon), or ZIP code
-        units: Temperature unit - 'm' for Celsius, 'f' for Fahrenheit, 's' for Kelvin
-        language: Language code (e.g., 'en', 'es', 'fr', 'de') - Note: Open-Meteo uses English for descriptions
-        
-    Returns:
-        Dict containing current weather data and metadata
-    """
+    """Gets current weather for a location using Open-Meteo."""
     
     try:
-        # Geocode location to get coordinates
         lat, lon, location_info = geocode_location(location)
-        
-        # Build request parameters for Open-Meteo
         temp_unit = "fahrenheit" if units == "f" else "celsius"
         wind_unit = "mph" if units == "f" else "kmh"
         
@@ -118,22 +77,16 @@ def get_current_weather(
             "timezone": "auto"
         }
         
-        # Make API request
         response = requests.get(WEATHER_API, params=params, timeout=10)
         response.raise_for_status()
         weather_data = response.json()
         
-        # Create search identifier
         search_id = f"current_{location.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Create directory structure
         os.makedirs(WEATHER_DIR, exist_ok=True)
         
-        # Process current weather data
         current = weather_data.get("current", {})
         current_time = current.get("time", datetime.now().isoformat())
-        
-        # Weather code to description mapping (WMO Weather interpretation codes)
         weather_codes = {
             0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
             4: "Fog", 5: "Drizzle", 6: "Rain", 7: "Snow", 8: "Shower", 9: "Thunderstorm"
@@ -141,7 +94,6 @@ def get_current_weather(
         weather_code = current.get("weather_code", 0)
         weather_desc = weather_codes.get(weather_code, "Unknown")
         
-        # Process and store weather data
         processed_data = {
             "search_metadata": {
                 "search_id": search_id,
@@ -161,21 +113,18 @@ def get_current_weather(
             "current": current
         }
         
-        # Save results to file
         file_path = os.path.join(WEATHER_DIR, f"{search_id}.json")
         with open(file_path, "w") as f:
             json.dump(processed_data, f, indent=2)
         
         print(f"Current weather data saved to: {file_path}")
         
-        # Format temperature unit symbol
         temp_symbol = "°C" if units == "m" else "°F" if units == "f" else "K"
         if units == "s":
             temp_val = current.get("temperature_2m", 0) + 273.15
         else:
             temp_val = current.get("temperature_2m", "N/A")
         
-        # Return summary for the user
         summary = {
             "search_id": search_id,
             "location": {
@@ -216,29 +165,13 @@ def get_weather_forecast(
     units: str = "m",
     language: str = "en"
 ) -> Dict[str, Any]:
-    """
-    Get weather forecast for a specific location using Open-Meteo (free API).
-    
-    Args:
-        location: Location name, coordinates (lat,lon), or ZIP code
-        forecast_days: Number of forecast days (1-16)
-        hourly: Include hourly forecast data
-        units: Temperature unit - 'm' for Celsius, 'f' for Fahrenheit, 's' for Kelvin
-        language: Language code (e.g., 'en', 'es', 'fr', 'de') - Note: Open-Meteo uses English for descriptions
-        
-    Returns:
-        Dict containing weather forecast data and metadata
-    """
+    """Gets weather forecast for a location using Open-Meteo."""
     
     try:
-        # Validate forecast_days
         if not 1 <= forecast_days <= 16:
             return {"error": "forecast_days must be between 1 and 16"}
         
-        # Geocode location to get coordinates
         lat, lon, location_info = geocode_location(location)
-        
-        # Build request parameters for Open-Meteo
         temp_unit = "fahrenheit" if units == "f" else "celsius"
         wind_unit = "mph" if units == "f" else "kmh"
         
@@ -251,25 +184,18 @@ def get_weather_forecast(
             "timezone": "auto"
         }
         
-        # Add daily parameters
         params["daily"] = "temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant"
         
-        # Add hourly parameters if requested
         if hourly:
             params["hourly"] = "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,precipitation"
         
-        # Make API request
         response = requests.get(WEATHER_API, params=params, timeout=10)
         response.raise_for_status()
         weather_data = response.json()
         
-        # Create search identifier
         search_id = f"forecast_{location.replace(' ', '_')}_{forecast_days}d_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Create directory structure
         os.makedirs(WEATHER_DIR, exist_ok=True)
-        
-        # Process and store weather data
         processed_data = {
             "search_metadata": {
                 "search_id": search_id,
@@ -293,14 +219,12 @@ def get_weather_forecast(
             "hourly": weather_data.get("hourly", {}) if hourly else {}
         }
         
-        # Save results to file
         file_path = os.path.join(WEATHER_DIR, f"{search_id}.json")
         with open(file_path, "w") as f:
             json.dump(processed_data, f, indent=2)
         
         print(f"Weather forecast data saved to: {file_path}")
         
-        # Return summary for the user
         daily_data = weather_data.get("daily", {})
         dates = daily_data.get("time", [])
         
