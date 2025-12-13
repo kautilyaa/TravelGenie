@@ -323,6 +323,128 @@ generator.save_reports()  # Generates both Markdown and HTML reports
 
 Reports will be saved to the `reports/` directory with timestamps.
 
+## EC2 vs ECS Comparison
+
+The `ec2_ecs_comparison.py` script allows you to run comprehensive load tests comparing AWS EC2 and ECS deployments side-by-side. This tool sends HTTP requests to deployed endpoints and measures performance metrics including latency, throughput, success rates, and network characteristics.
+
+### Prerequisites
+
+Before running the comparison, ensure:
+
+1. **Both endpoints are accessible**: Verify that both EC2 and ECS endpoints are running and accessible
+   ```bash
+   # Test EC2 endpoint
+   curl http://YOUR_EC2_IP:8501/_stcore/health
+   
+   # Test ECS endpoint
+   curl http://YOUR_ECS_IP:8501/_stcore/health
+   ```
+
+2. **AWS credentials configured**: Set up AWS profile if needed for CloudWatch metrics
+   ```bash
+   aws configure --profile your-profile-name
+   ```
+
+3. **Firewall rules**: Ensure security groups allow inbound traffic on port 8501 (or your configured port)
+
+### Usage
+
+Run the comparison script with the following command:
+
+```bash
+python ec2_ecs_comparison.py \
+  --requests 100000 \
+  --profile your-aws-profile \
+  --ec2-endpoint http://XXX.XXX.XXX.XXX:8501 \
+  --ecs-endpoint http://XXX.XXX.XXX.XXX:8501 \
+  --scenario simple_flight \
+  --max-concurrent 1000
+```
+
+**Note**: Replace `XXX.XXX.XXX.XXX` with your actual EC2 and ECS endpoint IP addresses. Always verify endpoints are accessible before running the comparison:
+
+### Parameters
+
+- `--requests`: Number of requests to send (1000-100000)
+- `--profile`: AWS profile name for CloudWatch integration (optional)
+- `--ec2-endpoint`: HTTP endpoint URL for EC2 deployment (e.g., `http://34.204.167.111:8501`)
+- `--ecs-endpoint`: HTTP endpoint URL for ECS deployment (e.g., `http://3.83.204.192:8501`)
+- `--scenario`: Test scenario to use. Available options:
+  - `simple_flight`: Simple flight search (1 tool call)
+  - `hotel`: Hotel search (1 tool call)
+  - `weather`: Weather forecast (1 tool call)
+  - `currency`: Currency conversion (1 tool call)
+  - `simple_trip`: Simple trip planning (2-3 tool calls)
+  - `complex_trip`: Complex trip planning (4-5 tool calls)
+  - `full_workflow`: Full workflow with currency (5+ tool calls)
+  - `events`: Event search (1-2 tool calls)
+  - `geocoding`: Geocoding (1 tool call)
+  - `multi_location`: Multi-location query (3+ tool calls)
+- `--max-concurrent`: Maximum concurrent requests (default: 50)
+
+### Options
+
+- `--ec2-only`: Test only EC2 deployment
+- `--ecs-only`: Test only ECS deployment
+- `--config`: Path to custom config file (default: `config/app_config.yaml`)
+
+### Output
+
+The script generates:
+
+1. **Console output**: Real-time progress and summary statistics
+2. **JSON results**: Detailed comparison results saved to `results/ec2_ecs_comparison_*.json`
+3. **Metrics files**: Platform-specific metrics saved to `results/metrics_ec2_*.json` and `results/metrics_ecs_*.json`
+
+### Metrics Compared
+
+The comparison includes:
+
+- **Throughput**: Requests per second (RPS)
+- **Latency**: Mean, P95, and P99 latencies
+- **Success Rate**: Percentage of successful requests
+- **Network Metrics**: DNS lookup time, network latency
+- **System Metrics**: CPU and memory usage (if available)
+
+### Example Output
+
+```
+======================================================================
+COMPARISON RESULTS
+======================================================================
+
+Metric Comparison:
+Metric                    EC2             ECS             Difference      Winner    
+--------------------------------------------------------------------------------
+throughput_rps            45.23 RPS       48.67 RPS       +7.6%           ECS       
+mean_latency_ms          221.45 ms       198.32 ms       +10.4%          ECS       
+p95_latency_ms           456.78 ms       412.34 ms       +9.7%            ECS       
+p99_latency_ms           678.90 ms       623.45 ms       +8.2%            ECS       
+success_rate              99.2%           99.5%           +0.3%           ECS       
+
+======================================================================
+Overall Winner: ECS
+Score: EC2=0, ECS=5
+======================================================================
+```
+
+### Troubleshooting
+
+**All requests failing:**
+- Verify endpoints are accessible: `curl http://YOUR_ENDPOINT/_stcore/health`
+- Check security group rules allow inbound traffic
+- Verify the application is running on both instances
+
+**High latency:**
+- Check network connectivity between your machine and AWS endpoints
+- Verify instances are in the same region for fair comparison
+- Check instance types and resource allocation
+
+**Timeout errors:**
+- Reduce `--max-concurrent` value
+- Increase timeout values in the script if needed
+- Verify instances have sufficient resources
+
 ## Why AWS is Better for Production
 
 See [reporting/aws_advantages.py](reporting/aws_advantages.py) for detailed documentation on why AWS EC2 is superior for production deployments:
